@@ -1,5 +1,7 @@
 # DSH-JI-Plugins
 
+[中文](README.zh.md) | English
+
 Personal plugins for the DeepSeek Harness (dsh) Web UI.
 
 ## Plugins
