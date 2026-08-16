@@ -1,5 +1,7 @@
 # JI-Theme
 
+中文 | [English](README.md)
+
 dsh Web UI 主题插件:精选皮肤 + 完整自定义主题编辑器 + DreamSkin `.zip` 主题包一键导入,全部按浏览器本地持久化。
 
 ## 功能

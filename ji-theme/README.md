@@ -1,5 +1,7 @@
 # JI-Theme
 
+[中文](README.zh.md) | English
+
 A theme plugin for the dsh Web UI: curated skins, a full custom-theme editor, and one-click import of DreamSkin `.zip` packages — all persisted per browser.
 
 ## Features
