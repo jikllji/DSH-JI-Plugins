@@ -1,0 +1,4 @@
+# JI-Theme bundle layer: mount the theme plugin into the web profile.
+- insert:
+    - id: ji-theme
+      name: 'ji-theme'
