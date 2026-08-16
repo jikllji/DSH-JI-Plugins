@@ -2,7 +2,7 @@
 
 中文 | [English](README.md)
 
-DeepSeek Harness Jikllji Web UI 的个人插件合集。
+DeepSeek Harness Jikllji 插件合集。
 
 ## 插件列表
 
