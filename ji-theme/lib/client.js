@@ -11,6 +11,10 @@ window.__ModuleLoader__.load({
     const STORAGE_SKIN = "ji-theme:skin";
     const STORAGE_THEMES = "ji-theme:themes";
     const STORAGE_LEGACY_CUSTOM = "ji-theme:custom";
+    const STORAGE_MIGRATED = "ji-theme:wallpapers-migrated-v1";
+    // The wallpaper contract (C1 / Q3-B) is fetched at runtime from the host —
+    // the browser half never mirrors media types, size caps, or URL rules.
+    const CONTRACT_URL = "/ji-theme/wallpapers/contract";
     const DEFAULT_SKIN = "system";
     const DEFAULT_BG_OPACITY = 0.5;
     const DEFAULT_BG_BLUR = 0;
@@ -27,7 +31,7 @@ window.__ModuleLoader__.load({
     ];
 
     const zh = {
-      "ji-theme.title": "JI 主题", "ji-theme.default": "跟随系统",
+      "ji-theme.title": "主题", "ji-theme.default": "跟随系统",
       "ji-theme.ocean": "深海蓝", "ji-theme.forest": "森林绿", "ji-theme.sunset": "落日紫",
       "ji-theme.paper": "暖纸", "ji-theme.sakura": "樱花粉",      "ji-theme.new": "新建", "ji-theme.edit": "编辑", "ji-theme.import": "导入",
       "ji-theme.editor.name": "名称", "ji-theme.editor.scheme": "明暗", "ji-theme.editor.light": "浅色", "ji-theme.editor.dark": "深色",
@@ -36,9 +40,10 @@ window.__ModuleLoader__.load({
       "ji-theme.editor.background": "背景图", "ji-theme.editor.chooseImage": "选择图片", "ji-theme.editor.removeImage": "移除图片",
       "ji-theme.editor.zoom": "缩放", "ji-theme.editor.x": "横向", "ji-theme.editor.y": "纵向", "ji-theme.editor.blur": "模糊", "ji-theme.editor.surfaceOpacity": "表面透明度", "ji-theme.editor.backgroundOpacity": "背景图透明度", "ji-theme.editor.maskOpacity": "遮罩透明度", "ji-theme.preview.chat": "对话", "ji-theme.preview.settings": "设置",
       "ji-theme.editor.save": "保存", "ji-theme.editor.delete": "删除", "ji-theme.editor.cancel": "取消",
+      "ji-theme.missing": "壁纸缺失", "ji-theme.storagePath": "壁纸存储", "ji-theme.uploadError": "上传失败", "ji-theme.tooLarge": "壁纸超过 50MB 上限",
     };
     const en = {
-      "ji-theme.title": "JI Theme", "ji-theme.default": "System",
+      "ji-theme.title": "Theme", "ji-theme.default": "System",
       "ji-theme.ocean": "Ocean", "ji-theme.forest": "Forest", "ji-theme.sunset": "Sunset",
       "ji-theme.paper": "Paper", "ji-theme.sakura": "Sakura",      "ji-theme.new": "New", "ji-theme.edit": "Edit", "ji-theme.import": "Import",
       "ji-theme.editor.name": "Name", "ji-theme.editor.scheme": "Scheme", "ji-theme.editor.light": "Light", "ji-theme.editor.dark": "Dark",
@@ -47,12 +52,119 @@ window.__ModuleLoader__.load({
       "ji-theme.editor.background": "Background image", "ji-theme.editor.chooseImage": "Choose image", "ji-theme.editor.removeImage": "Remove image",
       "ji-theme.editor.zoom": "Zoom", "ji-theme.editor.x": "Horizontal", "ji-theme.editor.y": "Vertical", "ji-theme.editor.blur": "Blur", "ji-theme.editor.surfaceOpacity": "Surface opacity", "ji-theme.editor.backgroundOpacity": "Background opacity", "ji-theme.editor.maskOpacity": "Mask opacity", "ji-theme.preview.chat": "Chat", "ji-theme.preview.settings": "Settings",
       "ji-theme.editor.save": "Save", "ji-theme.editor.delete": "Delete", "ji-theme.editor.cancel": "Cancel",
+      "ji-theme.missing": "wallpaper missing", "ji-theme.storagePath": "Wallpaper storage", "ji-theme.uploadError": "Upload failed", "ji-theme.tooLarge": "Wallpaper exceeds 50MB limit",
     };
 
     function readStorage(key) { try { const v = window.localStorage.getItem(key); return typeof v === "string" ? v : null; } catch { return null; } }
     function writeStorage(key, value) { try { if (value === null) window.localStorage.removeItem(key); else window.localStorage.setItem(key, value); } catch {} }
     function readSavedSkin() { return readStorage(STORAGE_SKIN); }
     function writeSavedSkin(id) { writeStorage(STORAGE_SKIN, id === DEFAULT_SKIN ? null : id); }
+
+    // ---- wallpaper contract (C1 / Q3-B) ----
+    // Fetched at runtime from the host; the browser half mirrors nothing.
+    let contract = null;
+    let contractPromise = null;
+    const contractListeners = new Set();
+    function getContract() { return contract; }
+    function subscribeContract(fn) { contractListeners.add(fn); return () => contractListeners.delete(fn); }
+    function notifyContract() { contractListeners.forEach((fn) => { try { fn(); } catch {} }); }
+    async function loadContract() {
+      if (contractPromise === null) {
+        contractPromise = (async () => {
+          // Q6-A: retry with backoff until the host answers.
+          for (let attempt = 0; attempt < 20; attempt++) {
+            try {
+              const res = await fetch(CONTRACT_URL);
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              const j = await res.json();
+              if (!j || !Array.isArray(j.mediaTypes) || typeof j.maxImageBytes !== "number" || typeof j.urlPrefix !== "string") throw new Error("bad contract");
+              contract = j;
+              notifyContract();
+              return j;
+            } catch (err) {
+              await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+            }
+          }
+          throw new Error("contract unavailable");
+        })().catch((err) => { contractPromise = null; throw err; });
+      }
+      return contractPromise;
+    }
+    function requireContract() {
+      if (contract === null) throw new Error("contract not loaded");
+      return contract;
+    }
+    function wallpaperNameFromUrl(url) {
+      if (contract === null) return null;
+      const prefix = contract.urlPrefix + "/";
+      if (typeof url !== "string" || !url.startsWith(prefix)) return null;
+      const name = url.slice(prefix.length);
+      return name && !name.includes("/") ? name : null;
+    }
+    async function uploadWallpaper(mediaType, base64Data) {
+      const c = requireContract();
+      const res = await fetch(c.urlPrefix, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mediaType, dataBase64: base64Data }) });
+      if (!res.ok) {
+        // Q4-A: host errors are { code, message }; code is the contract, message
+        // is the fallback shown only when the locale has no mapping for the code.
+        let code = null; let message = null;
+        try { const j = await res.json(); if (j) { code = j.code || null; message = j.message || null; } } catch {}
+        const err = new Error(message || ("HTTP " + res.status));
+        err.code = code;
+        throw err;
+      }
+      const j = await res.json();
+      if (!j || typeof j.url !== "string") throw new Error("no url in response");
+      return j.url;
+    }
+    async function deleteWallpaperFile(url) {
+      const name = wallpaperNameFromUrl(url);
+      if (name === null) return;
+      try { await fetch(requireContract().urlPrefix + "/" + encodeURIComponent(name), { method: "DELETE" }); } catch {}
+    }
+    // Q4-A: map a host error code to a locale string; unknown codes fall back
+    // to the host-supplied message.
+    function describeWallpaperError(err, t) {
+      if (err && err.code === "TOO_LARGE") return t("ji-theme.tooLarge");
+      const message = err && err.message ? err.message : String(err);
+      return (t("ji-theme.uploadError") + ": ") + message;
+    }
+    function dataUrlToBase64(dataUrl) {
+      const comma = dataUrl.indexOf(",");
+      return comma === -1 ? dataUrl : dataUrl.slice(comma + 1);
+    }
+    function dataUrlMediaType(dataUrl) {
+      const m = /^data:([^;,]+)/.exec(String(dataUrl));
+      return m ? m[1] : "image/png";
+    }
+    // One-time migration (spec Q3-A / Q4-C): any stored `background` that is a
+    // data: URL gets uploaded to the host and replaced with its file URL; a
+    // failed migration clears the wallpaper but keeps the theme's colors.
+    async function migrateLegacyWallpapers() {
+      if (readStorage(STORAGE_MIGRATED) === "1") return;
+      const themes = loadThemes();
+      let changed = false;
+      let failures = 0;
+      for (const theme of themes) {
+        const bg = theme.background;
+        if (typeof bg !== "string" || !bg.startsWith("data:")) continue;
+        try {
+          const url = await uploadWallpaper(dataUrlMediaType(bg), dataUrlToBase64(bg));
+          theme.background = url;
+          changed = true;
+        } catch (err) {
+          failures++;
+          console.warn("[ji-theme] wallpaper migration failed, clearing background:", err && err.message ? err.message : err);
+          theme.background = null; // Q4-C: keep colors, drop wallpaper, no retry
+          changed = true;
+        }
+      }
+      if (changed) saveThemes(themes);
+      writeStorage(STORAGE_MIGRATED, "1");
+      if (failures > 0) console.warn("[ji-theme] wallpaper migration cleared " + failures + " wallpaper(s) (keep colors)");
+      return changed;
+    }
+    // ---- end wallpaper file API ----
 
     function normalizeTheme(t) {
       return Object.assign({}, t, {
@@ -144,7 +256,7 @@ window.__ModuleLoader__.load({
       cardSelected: { boxShadow: "0 0 0 2px var(--dsw-alias-brand-primary)", background: "var(--dsw-alias-interactive-bg-hover)" },
       cardLabel: { color: "var(--dsw-alias-label-secondary)", fontSize: "12px", lineHeight: "16px", whiteSpace: "nowrap" },
       cardLabelSelected: { color: "var(--dsw-alias-label-primary)" },
-      swatch: { width: "100%", height: "52px", borderRadius: "8px", boxSizing: "border-box", padding: "8px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "6px", backgroundSize: "cover", backgroundPosition: "center" },
+      swatch: { position: "relative", width: "100%", height: "52px", borderRadius: "8px", boxSizing: "border-box", padding: "8px", display: "flex", flexDirection: "column", justifyContent: "center", gap: "6px", backgroundSize: "cover", backgroundPosition: "center" },
       swatchLine: { height: "7px", borderRadius: "4px" },
       button: { height: "32px", padding: "0 14px", borderRadius: "8px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-button-elevated-fill)", color: "var(--dsw-alias-label-primary)", cursor: "pointer", fontSize: "13px", font: "inherit", boxSizing: "border-box" },
       buttonDanger: { color: "var(--dsw-alias-state-error-primary)" },
@@ -160,8 +272,27 @@ window.__ModuleLoader__.load({
       check: { position: "absolute", top: "3px", right: "3px", width: "16px", height: "16px", borderRadius: "50%", background: "#3b82f6", color: "#ffffff", fontSize: "11px", lineHeight: "16px", textAlign: "center" },
     };
 
-    function Swatch({ face }) {
-      return React.createElement("div", { style: Object.assign({}, S.swatch, { background: face.background ? undefined : face.bg, backgroundImage: face.background ? "url(\"" + face.background + "\")" : undefined, border: "1px solid " + (face.border || "transparent") }) },
+    function Swatch({ face, t }) {
+      const [missing, setMissing] = React.useState(false);
+      React.useEffect(() => {
+        if (!face.background || String(face.background).startsWith("data:")) { setMissing(false); return; }
+        let cancelled = false;
+        let timer = null;
+        const probe = () => {
+          const img = new Image();
+          img.onload = () => { if (!cancelled) { setMissing(false); if (timer !== null) { clearInterval(timer); timer = null; } } };
+          img.onerror = () => { if (!cancelled) setMissing(true); };
+          img.src = face.background;
+        };
+        probe();
+        // Re-probe periodically so an externally restored file clears the badge
+        // without remounting (ticket 05: "文件恢复后角标消失").
+        timer = setInterval(probe, 5000);
+        return () => { cancelled = true; if (timer !== null) clearInterval(timer); };
+      }, [face.background]);
+      const badge = missing ? React.createElement("span", { style: { position: "absolute", top: "2px", right: "2px", fontSize: "10px", lineHeight: "14px", padding: "0 4px", borderRadius: "4px", background: "rgba(0,0,0,0.7)", color: "#fff", zIndex: 2 } }, t("ji-theme.missing")) : null;
+      return React.createElement("div", { style: Object.assign({}, S.swatch, { background: face.background && !missing ? undefined : face.bg, backgroundImage: face.background && !missing ? "url(\"" + face.background + "\")" : undefined, border: "1px solid " + (face.border || "transparent") }) },
+        badge,
         React.createElement("div", { style: Object.assign({}, S.swatchLine, { width: "70%", background: face.text, opacity: 0.9 }) }),
         React.createElement("div", { style: Object.assign({}, S.swatchLine, { width: "45%", background: face.accent }) }),
       );
@@ -266,15 +397,22 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function compressImage(image, maxSide, quality) {
-      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-      const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(image.width * scale)); canvas.height = Math.max(1, Math.round(image.height * scale));
-      const context = canvas.getContext("2d"); context.fillStyle = "#ffffff"; context.fillRect(0, 0, canvas.width, canvas.height); context.drawImage(image, 0, 0, canvas.width, canvas.height); return canvas.toDataURL("image/jpeg", quality);
+    // No compression (spec Q7-B): read the picked file's raw bytes as base64
+    // and hand them to the host file store.
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("read failed"));
+        reader.onload = () => resolve(dataUrlToBase64(String(reader.result)));
+        reader.readAsDataURL(file);
+      });
     }
-    function readImageAsDataUrl(file, onDone) {
-      const reader = new FileReader(); reader.onerror = () => onDone(null);
-      reader.onload = () => { const image = new Image(); image.onerror = () => onDone(null); image.onload = () => { try { let d = compressImage(image, 1600, 0.75); if (d.length > 2000000) d = compressImage(image, 1000, 0.6); if (d.length > 2000000) d = compressImage(image, 800, 0.5); onDone(d); } catch { onDone(null); } }; image.src = reader.result; };
-      reader.readAsDataURL(file);
+    async function uploadWallpaperFile(file) {
+      // Q5-B: no local pre-checking — the host is the single authority; a
+      // too-large file comes back as a 413 with { code: "TOO_LARGE" }.
+      const base64 = await fileToBase64(file);
+      const mediaType = file.type || imageMime(file.name);
+      return uploadWallpaper(mediaType, base64);
     }
 
     //#region zip import (DreamSkin .zip -> theme)
@@ -357,9 +495,15 @@ window.__ModuleLoader__.load({
       const root = extractPart(text, 'root');
       if (root) {
         const font = prop(root, 'font-family:');
-        const ls = prop(root, 'letter-spacing:');
+        // letter-spacing is deliberately NOT imported: dsh's composer renders
+        // the visible glyphs on a backdrop layer while the native caret lives
+        // in the textarea, and Chromium's UA sheet resets form controls to
+        // letter-spacing: normal. Any non-zero spacing inherited from body
+        // therefore makes the glyphs advance faster than the caret, so the
+        // caret lags behind the typed letters. Dropping it keeps every
+        // imported theme caret-safe (applies to any DreamSkin package, not
+        // just this one).
         if (font) out.push('font-family:' + font);
-        if (ls) out.push('letter-spacing:' + ls);
       }
       const alphaOf = (part) => {
         const body = extractPart(text, part);
@@ -392,24 +536,8 @@ window.__ModuleLoader__.load({
       if (ext === 'gif') return 'image/gif';
       return 'image/webp';
     }
-    function compressImageBytes(bytes, mime) {
-      return new Promise((resolve) => {
-        const blob = new Blob([bytes], { type: mime });
-        const url = URL.createObjectURL(blob);
-        const image = new Image();
-        image.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
-        image.onload = () => {
-          URL.revokeObjectURL(url);
-          try {
-            let d = compressImage(image, 1600, 0.75);
-            if (d.length > 2000000) d = compressImage(image, 1000, 0.6);
-            if (d.length > 2000000) d = compressImage(image, 800, 0.5);
-            resolve(d);
-          } catch { resolve(null); }
-        };
-        image.src = url;
-      });
-    }
+    // No compression on import either (spec Q7-B): wallpaper bytes from the zip
+    // are uploaded as-is; a wallpaper over the cap rejects the whole zip (Q9-C).
     function mapDreamSkin(themeJson, cssText, imageDataUrl) {
       const c = themeJson.colors || {};
       const art = themeJson.art || {};
@@ -449,7 +577,27 @@ window.__ModuleLoader__.load({
       const [pref, setPref] = React.useState(() => props.getSnapshot().preference);
       const [themes, setThemes] = React.useState(() => props.loadThemes());
       const [editing, setEditing] = React.useState(null);
+      const [actionError, setActionError] = React.useState(null);
+      const [storagePath, setStoragePath] = React.useState(null);
+      const [contractReady, setContractReady] = React.useState(getContract() !== null);
       const bgInputRef = React.useRef(null);
+
+      // Q6-A: uploads stay disabled until the wallpaper contract is fetched
+      // (the client mirrors nothing, so it cannot act before the contract).
+      React.useEffect(() => {
+        let off = subscribeContract(() => setContractReady(true));
+        loadContract().then(() => setContractReady(true)).catch(() => {});
+        return off;
+      }, []);
+
+      // Q11-B: show the host-side wallpaper storage path as a small line.
+      // Runs only after the contract is ready (urlPrefix comes from it).
+      React.useEffect(() => {
+        if (!contractReady) return;
+        let cancelled = false;
+        fetch(requireContract().urlPrefix).then((r) => r.ok ? r.json() : null).then((j) => { if (!cancelled && j && typeof j.path === "string") setStoragePath(j.path); }).catch(() => {});
+        return () => { cancelled = true; };
+      }, [contractReady]);
 
       React.useEffect(() => {
         let last = props.getSnapshot().revision;
@@ -463,12 +611,13 @@ window.__ModuleLoader__.load({
         props.setSkin(id);
         setPref(id);
         if (editing !== null) {
+          cleanupUnsavedBackground(editing.draft);
           if (id === DEFAULT_SKIN) { setEditing(null); }
           else { const index = themes.findIndex((x) => x.id === id); if (index >= 0) setEditing({ mode: "edit", index, draft: Object.assign({}, themes[index]) }); }
         }
       };
       const refreshThemes = () => setThemes(props.loadThemes());
-      const startNew = () => setEditing({ mode: "new", index: -1, draft: newCustomTheme() });
+      const startNew = () => { if (editing !== null) cleanupUnsavedBackground(editing.draft); setEditing({ mode: "new", index: -1, draft: newCustomTheme() }); };
       const zipRef = React.useRef(null);
       const onZipFile = (event) => {
         const file = event.target.files?.[0];
@@ -483,11 +632,20 @@ window.__ModuleLoader__.load({
             const themeJson = JSON.parse(themeJsonText);
             const cssText = files["theme.css"] ? new TextDecoder().decode(files["theme.css"]) : "";
             const imageName = themeJson.image || "background.webp";
-            const imageDataUrl = files[imageName] ? await compressImageBytes(files[imageName], imageMime(imageName)) : null;
-            const theme = mapDreamSkin(themeJson, cssText, imageDataUrl);
+            let backgroundUrl = null;
+            if (files[imageName]) {
+              const bytes = files[imageName];
+              // Q9-C: a wallpaper over the cap rejects the ENTIRE zip. The cap
+              // comes from the fetched contract (Q3-B), never mirrored.
+              if (bytes.length > requireContract().maxImageBytes) throw new Error(t("ji-theme.tooLarge") + " (zip rejected)");
+              backgroundUrl = await uploadWallpaper(imageMime(imageName), toBase64(bytes));
+            }
+            const theme = mapDreamSkin(themeJson, cssText, backgroundUrl);
             props.addTheme(theme);
             refreshThemes();
           } catch (err) {
+            const msg = err && err.message ? err.message : String(err);
+            setActionError(msg);
             console.error("[ji-theme] import failed:", err);
           }
           event.target.value = "";
@@ -496,10 +654,26 @@ window.__ModuleLoader__.load({
       };
       const startEditSelected = () => {
         if (pref === "system" || pref === "light" || pref === "dark") return;
+        if (editing !== null) cleanupUnsavedBackground(editing.draft);
         const index = themes.findIndex((x) => x.id === pref);
         if (index >= 0) { setEditing({ mode: "edit", index, draft: Object.assign({}, themes[index]) }); }
       };
       const patch = (field, value) => setEditing((e) => e === null ? e : { mode: e.mode, index: e.index, draft: Object.assign({}, e.draft, { [field]: value }) });
+      // The draft may carry a file URL that was uploaded but never saved (e.g.
+      // the user picked an image then cancelled). Only that unsaved URL is
+      // garbage: a saved theme's background must stay until saveTheme replaces
+      // or the theme is deleted (Q5-A: delete when the reference is gone).
+      const savedBackgroundOf = (d) => {
+        if (d === null) return null;
+        const idx = themes.findIndex((x) => x.id === d.id);
+        return idx >= 0 ? themes[idx].background : null;
+      };
+      const cleanupUnsavedBackground = (d) => {
+        if (d === null || d.background === null) return;
+        const saved = savedBackgroundOf(d);
+        if (d.background !== saved) deleteWallpaperFile(d.background);
+      };
+      const discardDraft = () => { if (editing !== null) { cleanupUnsavedBackground(editing.draft); setEditing(null); } };
       const save = () => {
         if (editing === null) return;
         props.saveTheme(editing.draft);
@@ -512,7 +686,22 @@ window.__ModuleLoader__.load({
         setEditing(null);
         refreshThemes();
       };
-      const onBgFile = (event) => { const file = event.target.files?.[0]; if (file === undefined) return; readImageAsDataUrl(file, (dataUrl) => { if (dataUrl !== null) patch("background", dataUrl); event.target.value = ""; }); };
+      const onBgFile = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (file === undefined) return;
+        try {
+          // If the draft already holds an unsaved wallpaper URL, it becomes an
+          // orphan the moment we replace it — clean it up first (Q5-A).
+          cleanupUnsavedBackground(editing === null ? null : editing.draft);
+          const url = await uploadWallpaperFile(file);
+          patch("background", url);
+          setActionError(null);
+        } catch (err) {
+          setActionError(describeWallpaperError(err, t));
+          console.error("[ji-theme] wallpaper upload failed:", err);
+        }
+      };
 
       const faces = themes.map((c) => ({
         id: c.id,
@@ -525,26 +714,18 @@ window.__ModuleLoader__.load({
 
       return React.createElement("div", { style: S.group },
         React.createElement("div", { style: S.title }, t("ji-theme.title")),
+        storagePath ? React.createElement("div", { style: { color: "var(--dsw-alias-label-tertiary)", fontSize: "11px", lineHeight: "16px", paddingBottom: "4px", wordBreak: "break-all" } }, t("ji-theme.storagePath") + "：" + storagePath) : null,
+        actionError ? React.createElement("div", { style: { color: "var(--dsw-alias-state-error-primary)", fontSize: "12px", lineHeight: "16px", paddingBottom: "4px" } }, actionError) : null,
         React.createElement("div", { style: S.grid },
           React.createElement(Card, { key: "system", selected: pref === "system" && (editing === null || editing.mode === "edit"), onSelect: () => select(DEFAULT_SKIN), label: t("ji-theme.default") }, React.createElement(DefaultSwatch, {})),
-          faces.map((f) => React.createElement(Card, { key: f.id, selected: pref === f.id && (editing === null || editing.mode === "edit"), onSelect: () => select(f.id), label: f.label }, React.createElement(Swatch, { face: f }))),
+          faces.map((f) => React.createElement(Card, { key: f.id, selected: pref === f.id && (editing === null || editing.mode === "edit"), onSelect: () => select(f.id), label: f.label }, React.createElement(Swatch, { face: f, t: t }))),
           React.createElement(Card, { key: "__edit__", selected: editing !== null && editing.mode === "edit", onSelect: startEditSelected, label: t("ji-theme.edit") }, React.createElement(EditSwatch, {})),
           React.createElement(Card, { key: "__new__", selected: editing !== null && editing.mode === "new", onSelect: startNew, label: t("ji-theme.new") }, React.createElement(NewSwatch, {})),
           React.createElement(Card, { key: "__import__", selected: false, onSelect: () => zipRef.current?.click(), label: t("ji-theme.import") }, React.createElement(ImportSwatch, {})),
         ),
         React.createElement("input", { ref: zipRef, type: "file", accept: ".zip,application/zip", style: { display: "none" }, onChange: onZipFile }),
         draft === null ? null : React.createElement("div", { style: S.editor },
-          React.createElement("div", { style: { display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-start" } },
-            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "10px", flexShrink: 0 } },
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
-                React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.chat")),
-                React.createElement(ThemePreview, { draft: draft, scene: "chat" }),
-              ),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
-                React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.settings")),
-                React.createElement(ThemePreview, { draft: draft, scene: "settings" }),
-              ),
-            ),
+          React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } },
             React.createElement("div", { style: { flex: 1, minWidth: "260px", display: "flex", flexDirection: "column", gap: "10px" } },
               React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.name")), React.createElement("input", { type: "text", style: S.input, value: draft.name, placeholder: "My theme", onChange: (event) => patch("name", event.target.value) })),
               React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.scheme")), React.createElement("button", { type: "button", style: S.button, onClick: () => patch("colorScheme", draft.colorScheme === "light" ? "dark" : "light") }, draft.colorScheme === "light" ? t("ji-theme.editor.light") : t("ji-theme.editor.dark"))),
@@ -558,17 +739,25 @@ window.__ModuleLoader__.load({
               React.createElement(ColorField, { label: t("ji-theme.editor.secondary"), value: draft.secondaryColor, onChange: (v) => patch("secondaryColor", v) }),
               React.createElement(ColorField, { label: t("ji-theme.editor.highlight"), value: draft.highlightColor, onChange: (v) => patch("highlightColor", v) }),
               React.createElement(ColorField, { label: t("ji-theme.editor.line"), value: draft.lineColor, onChange: (v) => patch("lineColor", v) }),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
+                React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.chat")),
+                React.createElement(ThemePreview, { draft: draft, scene: "chat" }),
+              ),
+              React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
+                React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.settings")),
+                React.createElement(ThemePreview, { draft: draft, scene: "settings" }),
+              ),
               React.createElement(Slider, { label: t("ji-theme.editor.surfaceOpacity"), value: Math.round((draft.surfaceOpacity ?? 1) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("surfaceOpacity", v / 100) }),
               React.createElement(Slider, { label: t("ji-theme.editor.backgroundOpacity"), value: Math.round((draft.backgroundOpacity ?? DEFAULT_BG_OPACITY) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("backgroundOpacity", v / 100) }),
               React.createElement(Slider, { label: t("ji-theme.editor.maskOpacity"), value: Math.round((draft.maskOpacity ?? 0.3) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("maskOpacity", v / 100) }),
-              React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.background")), React.createElement("button", { type: "button", style: S.button, onClick: () => bgInputRef.current?.click() }, t("ji-theme.editor.chooseImage")), draft.background ? React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: () => patch("background", null) }, t("ji-theme.editor.removeImage")) : null, React.createElement("input", { ref: bgInputRef, type: "file", accept: "image/*", style: { display: "none" }, onChange: onBgFile })),
+              React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.background")), React.createElement("button", { type: "button", disabled: !contractReady, style: Object.assign({}, S.button, contractReady ? {} : { opacity: 0.5, cursor: "not-allowed" }), onClick: () => { if (contractReady) bgInputRef.current?.click(); } }, t("ji-theme.editor.chooseImage")), draft.background ? React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: () => { cleanupUnsavedBackground(draft); patch("background", null); } }, t("ji-theme.editor.removeImage")) : null, React.createElement("input", { ref: bgInputRef, type: "file", accept: "image/*", style: { display: "none" }, onChange: onBgFile })),
               draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.zoom"), value: Math.round((draft.backgroundZoom ?? 1) * 100), min: 100, max: 300, step: 1, format: (v) => v + "%", onChange: (v) => patch("backgroundZoom", v / 100) }) : null,
               draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.x"), value: Math.round(draft.backgroundX ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundX", v) }) : null,
               draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.y"), value: Math.round(draft.backgroundY ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundY", v) }) : null,
               draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.blur"), value: Math.round(draft.backgroundBlur ?? 0), min: 0, max: 60, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundBlur", v) }) : null,
               React.createElement("div", { style: S.actionRow },
                 React.createElement("button", { type: "button", style: S.button, onClick: save }, t("ji-theme.editor.save")),
-                React.createElement("button", { type: "button", style: S.button, onClick: () => setEditing(null) }, t("ji-theme.editor.cancel")),
+                React.createElement("button", { type: "button", style: S.button, onClick: discardDraft }, t("ji-theme.editor.cancel")),
                 React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: remove }, t("ji-theme.editor.delete")),
               ),
             ),
@@ -599,6 +788,16 @@ window.__ModuleLoader__.load({
       };
       registerThemes();
       ctx.effect(() => () => { themeDisposers.forEach((d) => d()); themeDisposers = []; }, "ji-theme: unregister themes");
+      // Q3-A: migrate any legacy data: wallpapers to the host file store once.
+      // The contract must be fetched first — migration uploads through it.
+      loadContract().then(() => migrateLegacyWallpapers()).then((changed) => {
+        if (changed) {
+          registerThemes();
+          applyBackground();
+          applyThemeCss();
+          reassertSavedSkin();
+        }
+      }).catch((err) => console.error("[ji-theme] wallpaper migration failed:", err));
 
       const saved = readSavedSkin();
       if (typeof saved === "string" && saved !== DEFAULT_SKIN) { const registered = ctx.theme.getTheme().themes.some((x) => x.id === saved); if (registered && ctx.theme.getTheme().preference !== saved) ctx.theme.setTheme(saved); }
@@ -645,7 +844,13 @@ window.__ModuleLoader__.load({
         const css = theme && theme.css;
         if (!css) { if (cssEl !== null) { cssEl.remove(); cssEl = null; } return; }
         if (cssEl === null) { cssEl = document.createElement('style'); cssEl.dataset.plugin = 'ji-theme'; document.head.appendChild(cssEl); }
-        cssEl.textContent = css;
+        // Strip any letter-spacing declarations from the imported css (see
+        // parseThemeCss): the composer's glyph backdrop inherits body
+        // letter-spacing while the textarea caret is UA-reset to normal, so
+        // non-zero spacing makes the caret lag behind the typed letters. This
+        // also heals themes imported before the sanitization existed.
+        const sanitized = String(css).replace(/letter-spacing\s*:[^;{}]+;?/gi, '');
+        cssEl.textContent = sanitized + '\ninput, textarea, [contenteditable] { letter-spacing: normal; }';
       };
       applyThemeCss();
       ctx.effect(() => () => { if (cssEl !== null) { cssEl.remove(); cssEl = null; } }, "ji-theme: css cleanup");
@@ -696,22 +901,23 @@ window.__ModuleLoader__.load({
       const bootReassert = setTimeout(reassertSavedSkin, 500);
       ctx.effect(() => () => clearTimeout(bootReassert), "ji-theme: boot reassert timer");
 
-      ctx.slots.inject("settings.appearance.item", () => ctx.slots.register({
-        name: "settings.appearance.item",
+      const themeActions = {
+        getSnapshot: () => ctx.theme.getTheme(),
+        subscribe: (fn) => ctx.on("theme/change", fn),
+        setSkin: (id) => { ctx.theme.setTheme(id); writeSavedSkin(id); },
+        loadThemes: () => loadThemes(),
+        saveTheme: (theme) => { const themes = loadThemes(); const index = themes.findIndex((x) => x.id === theme.id); const old = index >= 0 ? themes[index] : null; if (index >= 0) themes[index] = theme; else themes.push(theme); saveThemes(themes); registerThemes(); if (old && old.background && old.background !== theme.background) deleteWallpaperFile(old.background); },
+        addTheme: (theme) => { const themes = loadThemes(); themes.push(normalizeTheme(theme)); saveThemes(themes); registerThemes(); ctx.theme.setTheme(theme.id); writeSavedSkin(theme.id); },
+        deleteTheme: (id) => { const themes = loadThemes(); const victim = themes.find((x) => x.id === id); const wasActive = ctx.theme.getTheme().preference === id; saveThemes(themes.filter((x) => x.id !== id)); registerThemes(); if (victim && victim.background) deleteWallpaperFile(victim.background); if (wasActive) { ctx.theme.setTheme(DEFAULT_SKIN); writeSavedSkin(DEFAULT_SKIN); } },
+      };
+      const ThemeSection = () => React.createElement(ThemeRow, Object.assign({ t: ctx.locale.bind(SETTINGS_NS) }, themeActions));
+      ctx.slots.inject("settings.section", () => ctx.slots.register({
+        name: "settings.section",
         id: "ji-theme",
-        order: 10,
-        group: { id: "ji-theme", order: 10, label: () => ctx.locale.bind(SETTINGS_NS)("ji-theme.title") },
+        order: 11,
+        label: () => ctx.locale.bind(SETTINGS_NS)("ji-theme.title"),
         locale: SETTINGS_NS,
-        inject: () => ({
-          getSnapshot: () => ctx.theme.getTheme(),
-          subscribe: (fn) => ctx.on("theme/change", fn),
-          setSkin: (id) => { ctx.theme.setTheme(id); writeSavedSkin(id); },
-          loadThemes: () => loadThemes(),
-          saveTheme: (theme) => { const themes = loadThemes(); const index = themes.findIndex((x) => x.id === theme.id); if (index >= 0) themes[index] = theme; else themes.push(theme); saveThemes(themes); registerThemes(); },
-          addTheme: (theme) => { const themes = loadThemes(); themes.push(normalizeTheme(theme)); saveThemes(themes); registerThemes(); ctx.theme.setTheme(theme.id); writeSavedSkin(theme.id); },
-          deleteTheme: (id) => { const wasActive = ctx.theme.getTheme().preference === id; saveThemes(loadThemes().filter((x) => x.id !== id)); registerThemes(); if (wasActive) { ctx.theme.setTheme(DEFAULT_SKIN); writeSavedSkin(DEFAULT_SKIN); } },
-        }),
-      }, ThemeRow));
+      }, ThemeSection));
     }
 
     exports.apply = apply;

@@ -1,21 +1,23 @@
 {
   "name": "ji-theme",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "JI-Theme — switchable skins, custom color/opacity themes, and wallpaper for the dsh web UI",
+  "description": "JI-Theme — switchable skins, custom color/opacity themes, and file-backed wallpapers for the dsh web UI",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
+    "./contract": "./lib/contract.js",
     "./package.json": "./package.json"
   },
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "lib/contract.js",
     "cordis.patch.yml",
     "README.md",
-    "README.zh.md"
+    "README.en.md"
   ],
   "dsh": {
     "bundle": {
