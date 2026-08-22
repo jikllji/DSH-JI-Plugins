@@ -1,24 +1,24 @@
 # DSH-JI-Plugins
 
-[中文](README.zh.md) | English
+[English](README.en.md) | 中文
 
-Personal plugins for DSH.
+DSH 个人插件集合。
 
-## Plugins
+## 插件
 
-| Plugin | Description |
+| 插件 | 描述 |
 | --- | --- |
-| [ji-theme](ji-theme/README.md) | Skins, custom theme editor, and DreamSkin `.zip` import for the dsh web UI |
+| [ji-theme](ji-theme/README.md) | DSH-DreamSkin 主题适配插件:使 DSH 能够使用 Codex 主题,主题库:https://dreamskin.cc/ |
 
-## Installing a plugin
+## 安装插件
 
-Each plugin is a dsh bundle. See the plugin's own README for full instructions; in short:
+每个插件都是一个 dsh bundle。完整说明见插件各自的 README,简要如下:
 
 ```bash
-dsh plugin --profile web add <path-to-plugin-dir>
-# restart dsh web to activate
+dsh plugin --profile web add <插件目录路径>
+# 重启 dsh web 生效
 ```
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — 见 [LICENSE](LICENSE)。
