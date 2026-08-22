@@ -1,0 +1,4 @@
+# JI-Filable bundle layer: mount the drag-and-drop file intake plugin row.
+- insert:
+    - id: ji-filable
+      name: 'ji-filable'
