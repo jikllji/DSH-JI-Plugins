@@ -2,7 +2,7 @@
 
 English | [中文](README.md)
 
-A theme plugin for the dsh Web UI: curated skins, a full custom-theme editor, and one-click import of DreamSkin `.zip` packages. Wallpapers persist as real files, free of the localStorage quota.
+A DSH-DreamSkin theme adapter plugin: brings Codex themes to DSH, theme library: https://dreamskin.cc/. Curated skins, a full custom-theme editor, and one-click import of DreamSkin `.zip` packages; wallpapers persist as real files, free of the localStorage quota.
 
 ## Features
 

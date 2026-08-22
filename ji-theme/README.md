@@ -2,7 +2,7 @@
 
 [English](README.en.md) | 中文
 
-dsh Web UI 主题插件:精选皮肤 + 完整自定义主题编辑器 + DreamSkin `.zip` 主题包一键导入。壁纸以真实文件持久化,不受 localStorage 配额限制。
+DSH-DreamSkin 主题适配插件:使 DSH 能够使用 Codex 主题,主题库:https://dreamskin.cc/ 。精选皮肤 + 完整自定义主题编辑器 + DreamSkin `.zip` 主题包一键导入,壁纸以真实文件持久化,不受 localStorage 配额限制。
 
 ## 功能
 
