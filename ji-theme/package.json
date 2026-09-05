@@ -1,14 +1,13 @@
 {
   "name": "ji-theme",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "JI-Theme — switchable skins, custom color/opacity themes, and file-backed wallpapers for the dsh web UI",
+  "description": "JI-Theme — switchable skins, custom color/opacity themes, and wallpaper for the dsh web UI",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
-    "./contract": "./lib/contract.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -25,7 +24,6 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-theme"
       ],
@@ -36,7 +34,6 @@
   "peerDependencies": {
     "react": "^18.2.0",
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-runtime": "*",
     "@deepseek-ai/dsh-client-locale": "*",
     "@deepseek-ai/dsh-client-ui-theme": "*",
     "@deepseek-ai/dsh-client-ui-slots": "*"
