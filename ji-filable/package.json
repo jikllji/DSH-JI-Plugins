@@ -1,26 +1,14 @@
 {
   "name": "ji-filable",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "JI-Filable — drag-and-drop any non-image file into chat; session-scoped lossless file storage readable by the agent.",
-  "main": "dsh/index.js",
   "exports": {
     ".": "./dsh/index.js",
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
-  "files": [
-    "dsh/index.js",
-    "lib/client.js",
-    "lib/client.template.js",
-    "lib/drop-logic.js",
-    "scripts/build-client.mjs",
-    "cordis.patch.yml",
-    "CONTEXT.md",
-    "README.md",
-    "README.en.md"
-  ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -29,6 +17,5 @@
       "platform": "web",
       "inject": ["slots", "sessions", "locale"]
     }
-  },
-  "license": "MIT"
+  }
 }

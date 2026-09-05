@@ -19,21 +19,31 @@ __DROP_LOGIC_INLINE__
       "ji-filable.chip.uploading": "上传中",
       "ji-filable.chip.done": "已就绪",
       "ji-filable.chip.error": "失败",
+      "ji-filable.chip.insert": "插入 @地址",
+      "ji-filable.chip.close": "关闭",
       "ji-filable.drag.noSession": "请先打开一个会话，再拖入文件",
       "ji-filable.drag.noWorkspace": "无法确定会话工作区，文件未保存",
       "ji-filable.drag.done": "已上传 {count} 个文件到工作区 sessionfiles",
       "ji-filable.drag.mixedDone": "已上传 {count} 个文件（{img} 张图片已跳过，请单独拖入以使用视觉流程）",
       "ji-filable.drag.partial": "上传完成 {ok} 个，失败: {err}",
+      "ji-filable.dropHint.title": "拖入文件",
+      "ji-filable.dropHint.desc": "松开即保存到工作区 sessionfiles",
+      "ji-filable.dropHint.noSession": "先打开一个会话，再拖入文件",
     };
     var en = {
       "ji-filable.chip.uploading": "Uploading",
       "ji-filable.chip.done": "Ready",
       "ji-filable.chip.error": "Failed",
+      "ji-filable.chip.insert": "Insert @ref",
+      "ji-filable.chip.close": "Close",
       "ji-filable.drag.noSession": "Open a session before dropping files",
       "ji-filable.drag.noWorkspace": "Session workspace unknown — file not saved",
       "ji-filable.drag.done": "Uploaded {count} file(s) to workspace sessionfiles",
       "ji-filable.drag.mixedDone": "Uploaded {count} file(s) ({img} image(s) skipped — drop images alone to use the vision flow)",
       "ji-filable.drag.partial": "Uploaded {ok}, failed: {err}",
+      "ji-filable.dropHint.title": "Drop files",
+      "ji-filable.dropHint.desc": "Release to save into workspace sessionfiles",
+      "ji-filable.dropHint.noSession": "Open a session before dropping files",
     };
 
     // ── toast store (subscribeStore; timers tracked for fiber cleanup) ─────
@@ -60,6 +70,10 @@ __DROP_LOGIC_INLINE__
     var CHIP_ERR_STYLE = { borderColor: "var(--dsw-state-error-primary, #d9534f)" };
     var CHIP_NAME_STYLE = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
     var CHIP_META_STYLE = { color: "var(--dsw-alias-label-secondary)", whiteSpace: "nowrap" };
+    var CHIP_DONE_STYLE = { cursor: "pointer" };
+    var CHIP_INSERT_STYLE = { marginLeft: "6px", padding: "2px 8px", borderRadius: "6px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-2)", color: "var(--dsw-alias-label-primary)", fontSize: "12px", cursor: "pointer", flex: "none" };
+    var CHIP_CLOSE_STYLE = { flex: "none", border: "none", background: "transparent", color: "var(--dsw-alias-label-tertiary)", cursor: "pointer", fontSize: "14px", lineHeight: "1", padding: "2px 4px", borderRadius: "4px" };
+    var CHIP_CLOSE_HOVER = { background: "var(--dsw-alias-bg-layer-2)", color: "var(--dsw-alias-label-primary)" };
     function addChip(entry) {
       var id = ++chipSeq;
       chips.set(chips.get().concat([Object.assign({ id: id, status: "uploading" }, entry)]));
@@ -69,6 +83,50 @@ __DROP_LOGIC_INLINE__
       chips.set(chips.get().map(function (chip) { return chip.id === id ? Object.assign({}, chip, patch) : chip; }));
     }
     function clearChips() { chips.set([]); }
+    function removeChip(id) {
+      chips.set(chips.get().filter(function (chip) { return chip.id !== id; }));
+    }
+
+    // ── drop hint store (full-viewport overlay while dragging non-images) ──
+    var dropHint = subscribeStore({ visible: false, disabled: false });
+    var dropHintDepth = 0;
+    var HINT_MASK = { position: "fixed", inset: "0", zIndex: "1000", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", backgroundColor: "var(--dsw-alias-bg-mask-drop)", backdropFilter: "blur(10px)", animation: "dshHintFade 160ms ease-out" };
+    var HINT_WRAP = { display: "flex", flexDirection: "column", alignItems: "center", marginTop: "-3%", padding: "0 40px", color: "var(--dsw-alias-label-primary)", textAlign: "center" };
+    var HINT_TITLE = { marginTop: "16px", fontSize: "20px", lineHeight: "28px" };
+    var HINT_DESC = { marginTop: "16px", fontSize: "14px", lineHeight: "18px", color: "var(--dsw-alias-label-tertiary)", whiteSpace: "pre-wrap" };
+    function showDropHint(disabled) { dropHint.set({ visible: true, disabled: Boolean(disabled) }); }
+    function hideDropHint() { dropHintDepth = 0; dropHint.set({ visible: false, disabled: false }); }
+    function DropHintOverlay(props) {
+      var t = props.t;
+      var state = React.useState(dropHint.get());
+      var value = state[0];
+      var setValue = state[1];
+      React.useEffect(function () { return dropHint.subscribe(setValue); }, []);
+      if (!value.visible) return null;
+      return React.createElement("div", { style: HINT_MASK },
+        React.createElement("div", { style: HINT_WRAP },
+          value.disabled ? React.createElement(FileIconDisabled, null) : React.createElement(FileIcon, null),
+          React.createElement("div", { style: HINT_TITLE }, value.disabled ? t("ji-filable.dropHint.noSession") : t("ji-filable.dropHint.title")),
+          value.disabled ? null : React.createElement("div", { style: HINT_DESC }, t("ji-filable.dropHint.desc")),
+        ));
+    }
+    // File-with-upload-arrow icon (theme-neutral tints, distinct from the
+    // composer's image-card illustration).
+    function FileIcon() {
+      return React.createElement("svg", { width: "115", height: "84", viewBox: "0 0 115 84", fill: "none" },
+        React.createElement("rect", { x: "26", y: "10", width: "46", height: "54", rx: "9", fill: "#679EFE" }),
+        React.createElement("rect", { x: "36", y: "22", width: "26", height: "4", rx: "2", fill: "#fff" }),
+        React.createElement("rect", { x: "36", y: "32", width: "26", height: "4", rx: "2", fill: "#fff" }),
+        React.createElement("circle", { cx: "74", cy: "56", r: "20", fill: "#9CE5ED" }),
+        React.createElement("path", { d: "M74 64V50M69 55l5-5 5 5", stroke: "#fff", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" }));
+    }
+    function FileIconDisabled() {
+      return React.createElement("svg", { width: "115", height: "84", viewBox: "0 0 115 84", fill: "none" },
+        React.createElement("rect", { x: "26", y: "10", width: "46", height: "54", rx: "9", fill: "#979DA6" }),
+        React.createElement("rect", { x: "36", y: "22", width: "26", height: "4", rx: "2", fill: "#fff" }),
+        React.createElement("circle", { cx: "74", cy: "56", r: "20", fill: "#F59E0B" }),
+        React.createElement("path", { d: "M64 46l20 20", stroke: "#fff", strokeWidth: "3.5", strokeLinecap: "round" }));
+    }
 
     function ToastStack(props) {
       var t = props.t;
@@ -85,8 +143,30 @@ __DROP_LOGIC_INLINE__
         }));
     }
 
+    // Close (dismiss) button placed at the left edge of a chip. Hover state is
+    // tracked per-button so hooks stay inside a stable component (hooks cannot
+    // be called inside a .map callback).
+    function CloseButton(props) {
+      var t = props.t;
+      var onRemove = props.onRemove;
+      var hover = React.useState(false);
+      var isHover = hover[0];
+      var setHover = hover[1];
+      return React.createElement("button", {
+        type: "button",
+        "aria-label": t("ji-filable.chip.close"),
+        title: t("ji-filable.chip.close"),
+        style: Object.assign({}, CHIP_CLOSE_STYLE, isHover ? CHIP_CLOSE_HOVER : {}),
+        onMouseEnter: function () { setHover(true); },
+        onMouseLeave: function () { setHover(false); },
+        onClick: function () { if (onRemove) onRemove(); },
+      }, "\u2715");
+    }
+
     function ChipRow(props) {
       var t = props.t;
+      var onInsert = props.onInsert;
+      var onRemove = props.onRemove;
       var state = React.useState(chips.get());
       var items = state[0];
       var setItems = state[1];
@@ -94,14 +174,24 @@ __DROP_LOGIC_INLINE__
       if (items.length === 0) return null;
       return React.createElement("div", { style: CHIP_ROW_STYLE },
         items.map(function (chip) {
+          var done = chip.status === "done";
+          var statusText = chip.status === "uploading" ? t("ji-filable.chip.uploading") : chip.status === "error" ? t("ji-filable.chip.error") : t("ji-filable.chip.done");
+          var rows = [
+            React.createElement(CloseButton, { t: t, onRemove: function () { if (onRemove) onRemove(chip.id); } }),
+            React.createElement("span", { style: CHIP_NAME_STYLE }, chip.name),
+            React.createElement("span", { style: CHIP_META_STYLE }, formatBytes(chip.size) + " · " + statusText),
+          ];
+          if (done && onInsert) {
+            rows.push(React.createElement("button", {
+              type: "button",
+              style: CHIP_INSERT_STYLE,
+              onClick: function () { onInsert(chip.name); },
+            }, t("ji-filable.chip.insert")));
+          }
           return React.createElement("div", {
             key: chip.id,
-            style: Object.assign({}, CHIP_ITEM_STYLE, chip.status === "error" ? CHIP_ERR_STYLE : {}),
-          },
-            React.createElement("span", { style: CHIP_NAME_STYLE }, chip.name),
-            React.createElement("span", { style: CHIP_META_STYLE },
-              formatBytes(chip.size) + " · " + (chip.status === "uploading" ? t("ji-filable.chip.uploading") : chip.status === "error" ? t("ji-filable.chip.error") : t("ji-filable.chip.done"))),
-          );
+            style: Object.assign({}, CHIP_ITEM_STYLE, chip.status === "error" ? CHIP_ERR_STYLE : {}, done ? CHIP_DONE_STYLE : {}),
+          }, rows);
         }));
     }
 
@@ -111,6 +201,29 @@ __DROP_LOGIC_INLINE__
         var snapshot = sessions.list.getSnapshot();
         return snapshot && snapshot.current;
       } catch (error) { return undefined; }
+    }
+
+    // Insert an `@file` mention into the current session's composer draft.
+    // Mirrors the internal QueueDock pattern: resolve the session-scoped ctx,
+    // then conversation.input.for(actx).setDraft(...). Best-effort: any
+    // resolution failure or non-'plain' phase aborts silently.
+    function insertRef(ctx, name) {
+      var sessions = ctx.get('sessions') || ctx.sessions;
+      if (!sessions) return;
+      var sid = getCurrentSession(sessions);
+      if (sid === undefined || sid === "") return;
+      var actx = sessions.scope(sid);
+      if (!actx) return;
+      try {
+        var conversation = actx.get('conversation');
+        if (!conversation) return;
+        var input = conversation.input.for(actx);
+        var state = input.state.getSnapshot();
+        if (!state || state.phase !== 'plain') return;
+        var ref = sessionfilesRef(name);
+        if (ref === null || ref === undefined) return;
+        input.setDraft(appendRef(state.draft, ref));
+      } catch (error) { /* insert is best-effort */ }
     }
 
     function uploadFile(sessionId, file) {
@@ -191,16 +304,34 @@ __DROP_LOGIC_INLINE__
         if (types.length === 0) return false;
         return classifyBatch(types) !== "all-images";
       }
+      function currentSessionId() { return getCurrentSession(sessions); }
       function onDragEnter(event) {
         if (!isFileDrag(event.dataTransfer)) return;
         event.preventDefault();
-        if (suppressNonImage(event.dataTransfer)) event.stopPropagation();
+        if (!suppressNonImage(event.dataTransfer)) return; // images/unknown → composer hint
+        dropHintDepth += 1;
+        var sid = currentSessionId();
+        showDropHint(sid === undefined || sid === "");
+        event.stopPropagation();
       }
       function onDragOver(event) {
         if (!isFileDrag(event.dataTransfer)) return;
         event.preventDefault();
         if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
-        if (suppressNonImage(event.dataTransfer)) event.stopPropagation();
+        if (!suppressNonImage(event.dataTransfer)) return;
+        var sid = currentSessionId();
+        showDropHint(sid === undefined || sid === "");
+        event.stopPropagation();
+      }
+      function onDragLeave(event) {
+        if (!isFileDrag(event.dataTransfer)) return;
+        dropHintDepth = Math.max(0, dropHintDepth - 1);
+        // Leaving the window: an OS file drag has no page dragstart, so dragend
+        // never fires — a document-level dragleave carries relatedTarget null
+        // when the pointer leaves the document. Use that as the reliable hide
+        // signal, with depth-0 + out-of-viewport as a backup.
+        var leftViewport = event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight;
+        if (event.relatedTarget === null || (leftViewport && dropHintDepth === 0)) hideDropHint();
       }
       function onDrop(event) {
         if (!isFileDrag(event.dataTransfer)) return;
@@ -209,6 +340,7 @@ __DROP_LOGIC_INLINE__
         if (batch === "all-images") return; // existing flow handles it
         event.preventDefault();
         event.stopPropagation();
+        hideDropHint();
         handleDrop(ctx, sessions, event.dataTransfer).catch(function (error) {
           toast(String((error && error.message) || error), false);
         });
@@ -216,13 +348,18 @@ __DROP_LOGIC_INLINE__
         // its window-level dragend listener clears dragActive.
         try { window.dispatchEvent(new DragEvent("dragend")); } catch (error) { /* best-effort */ }
       }
+      function onWindowDragEnd() { hideDropHint(); }
       document.addEventListener("dragenter", onDragEnter, true);
       document.addEventListener("dragover", onDragOver, true);
       document.addEventListener("drop", onDrop, true);
+      document.addEventListener("dragleave", onDragLeave, true);
+      window.addEventListener("dragend", onWindowDragEnd);
       return function () {
         document.removeEventListener("dragenter", onDragEnter, true);
         document.removeEventListener("dragover", onDragOver, true);
         document.removeEventListener("drop", onDrop, true);
+        document.removeEventListener("dragleave", onDragLeave, true);
+        window.removeEventListener("dragend", onWindowDragEnd);
       };
     }
 
@@ -238,6 +375,13 @@ __DROP_LOGIC_INLINE__
           pendingTimers.clear();
         };
       }, "ji-filable: timers");
+      // Inject the fade keyframes used by the drop hint mask (reversible).
+      ctx.effect(function () {
+        var style = document.createElement("style");
+        style.textContent = "@keyframes dshHintFade { from { opacity: 0; } to { opacity: 1; } }";
+        document.head.appendChild(style);
+        return function () { document.head.removeChild(style); };
+      }, "ji-filable: hint css");
 
       // Chips are session-scoped: clear them when the active session changes.
       var lastChipSession = null;
@@ -255,9 +399,15 @@ __DROP_LOGIC_INLINE__
         });
       });
 
+      ctx.slots.inject("shell.overlay", function () {
+        return ctx.slots.register({ name: "shell.overlay", id: "ji-filable-drop-hint" }, function () {
+          return React.createElement(DropHintOverlay, { t: ctx.locale.bind(NS) });
+        });
+      });
+
       ctx.slots.inject("conversation.input.dock", function () {
         return ctx.slots.register({ name: "conversation.input.dock", id: "ji-filable-files", order: 25 }, function () {
-          return React.createElement(ChipRow, { t: ctx.locale.bind(NS) });
+          return React.createElement(ChipRow, { t: ctx.locale.bind(NS), onInsert: function (name) { insertRef(ctx, name); }, onRemove: function (id) { removeChip(id); } });
         });
       });
     }

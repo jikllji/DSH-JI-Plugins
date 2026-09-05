@@ -102,3 +102,44 @@ export function planUploads(files) {
   const takeOver = all.filter(file => classifyFile(file.type) === 'take-over')
   return { takeOver, skippedImages: all.length - takeOver.length }
 }
+
+/**
+ * Whether ji-filable should show its own drag hint for a visible batch of
+ * types: any non-image batch (including mixed) yes; pure whitelisted images no
+ * (the composer's image hint covers those). Empty/unknown types fall back to
+ * no — the composer's own hint handles them.
+ * @param {Array<string>} fileTypes
+ * @returns {boolean}
+ */
+export function shouldShowDropHint(fileTypes) {
+  const types = Array.from(fileTypes || [])
+  if (types.length === 0) return false
+  return classifyBatch(types) !== 'all-images'
+}
+
+/**
+ * Format an `@file` mention for a path under the workspace `sessionfiles/`
+ * dir, following the native @-reference grammar: `@path` normally, `@"path"`
+ * when the path contains whitespace. Returns null for a path the grammar
+ * cannot represent safely (control chars / a stray quote).
+ * @param {string} name - the final (deduped) filename on disk.
+ * @returns {string | null}
+ */
+export function sessionfilesRef(name) {
+  const path = 'sessionfiles/' + String(name)
+  if (/[\u0000-\u001f\u007f-\u009f"]/.test(path)) return null
+  return /\s/.test(path) ? `@"${path}"` : `@${path}`
+}
+
+/**
+ * Append a reference to an existing draft, inserting a single space separator
+ * only when the draft is non-empty and does not already end in whitespace.
+ * @param {string} draft - current composer draft.
+ * @param {string} ref - the reference text to append.
+ * @returns {string}
+ */
+export function appendRef(draft, ref) {
+  const d = String(draft || '')
+  const sep = d === '' || /\s$/.test(d) ? '' : ' '
+  return d + sep + ref
+}
