@@ -4,13 +4,17 @@ English | [中文](README.md)
 
 A DSH file-upload plugin: drag any **non-image** file into chat and it is stored losslessly, under its original filename, in the session workspace's `sessionfiles/` directory — browsable in Explorer, and readable by the agent with its normal tools (glob/read).
 
+Current version **0.4.0**.
+
 ## Features
 
-- **Drop interception**: takes over non-whitelisted-image drops at the document **capture** phase, ahead of the composer's bubble-phase image-attachment flow; whitelisted images (png/jpeg/webp/gif) pass through to the existing vision flow.
-- **Lossless storage**: the raw byte stream is written under the original name into `<session-workspace>\sessionfiles\` — no compression, no conversion; name collisions get a `name (1).ext` suffix, never overwriting.
+- **Drop interception**: takes over non-whitelisted file drops at the document **capture** phase, ahead of the composer's bubble-phase image-attachment flow; whitelisted images (png/jpeg/webp/gif) pass through to the existing vision flow.
+- **Lossless storage**: the raw byte stream is written under the original name into `<session-workspace>\sessionfiles\` — no compression, no conversion; name collisions get a `name (1).ext` suffix, never overwriting. Per-file limit **100 MB** by default, overridable with the row config `maxBytes`.
 - **Session workspace as the single authority**: the destination comes only from the session's `Session.header.cwd`; when it can't be resolved the upload fails closed (no trust in client-reported paths).
-- **Atomic writer (`persistStream`)**: a host deep module that streams bytes + computes sha256 + writes with tmp+rename; error codes are contract constants (`too-large`/`sha-mismatch`), directly unit-testable.
-- **Chip / toast feedback**: display-only chips above the input dock (filename / size / status), cleared on session switch; success/failure/hints render as `shell.overlay` toasts.
+- **Atomic writer (`persistStream`)**: a host deep module that streams bytes + computes sha256 + writes with tmp+rename; error codes are contract constants (`too-large` → 413, `sha-mismatch` → 400, unknown session workspace → 400), directly unit-testable.
+- **Chip and its actions**: a chip above the input dock shows filename / size / status (uploading → ready / failed); the ✕ on its left removes just that entry, and **Insert @path** appends that file's native reference to the current draft. Chips clear on session switch.
+- **A real reference, not text (fixed in 0.4.0)**: insertion goes through the host's scoped `slash/input-insert-reference` event, so the host inserts a genuine chip node — **`@` references already in the draft are preserved**. (0.2.0 called `conversation.input.for(actx).setDraft(...)`, and the host's `setDraft` means "replace the whole draft with plain text", which flattened every existing reference into literal text.)
+- **Mixed batches and hints**: when a drop contains both whitelisted images and other files, the other files upload and the images are skipped with a hint to drop them separately; a full-screen hint layer shows for non-image drags, and a grey "open a session first" variant appears with no session.
 - **Protocol contract**: upload error codes are thrown by the host and matched by code on the client (message mapping); no bare strings couple across files.
 
 ## Install
@@ -45,9 +49,9 @@ node scripts/build-client.mjs
 ## Layout
 
 - `cordis.patch.yml` — composition patch (inserts the `ji-filable` row).
-- `dsh/index.js` — host half: `webServer` route (upload-to-disk), exports the `persistStream` atomic writer and error-code constants.
+- `dsh/index.js` — host half: the `/ji-filable/files` `webServer` route (upload-to-disk), row config `maxBytes`, and the exported `persistStream` atomic writer plus error-code constants.
 - `lib/drop-logic.js` — browser pure logic (single source of truth, unit-tested; inlined into the client bundle at build time).
-- `lib/client.template.js` — browser half template (the source that inlines drop-logic).
+- `lib/client.template.js` — browser half template (the source that inlines drop-logic; drop listeners, chips and reference insertion live here).
 - `lib/client.js` — generated browser bundle (do not edit by hand).
 - `scripts/build-client.mjs` — the build script that emits `lib/client.js`.
 - `CONTEXT.md` — plugin domain glossary (agent-readable; not part of the runtime).
@@ -55,6 +59,12 @@ node scripts/build-client.mjs
 
 ## Boundaries
 
-- Intercepts only non-whitelisted images; whitelisted images (png/jpeg/webp/gif) always pass through to the existing vision flow.
+- Intercepts only **non-whitelisted images** (anything outside png/jpeg/webp/gif, including svg/tiff/heic); whitelisted images always pass through to the existing vision flow.
+- **Insert @path** appends the reference at the **end of the draft** — the host exposes no "insert at caret" surface, and the insert point is computed in the host's detect coordinates (one chip occupies a single U+FFFC there).
 - Directory drops are silently ignored; a pure whitelisted-image drop goes through the existing flow untouched.
 - Files land in the (movable) session workspace, not the plugin dir — reinstalling/upgrading the plugin never touches already-uploaded files.
+
+## Versions
+
+- **0.4.0** — fixes Insert @path destroying existing draft references (now goes through `slash/input-insert-reference`); implemented against DSH **0.1.6-alpha.1**'s composer contract; README now covers chip actions, mixed drops/hints, the size limit and `maxBytes`.
+- 0.2.0 — DSH 0.1.2-rc.1 compatibility.
