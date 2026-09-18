@@ -1,6 +1,6 @@
 {
   "name": "ji-theme",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "description": "JI-Theme — dual-format theme packages (DreamSkin + DSH v2), custom themes, and wallpaper for the dsh web UI",
@@ -15,6 +15,7 @@
     "lib/client.js",
     "lib/store.js",
     "lib/zip.js",
+    "lib/zip-write.js",
     "lib/contract.js",
     "cordis.patch.yml",
     "README.md",

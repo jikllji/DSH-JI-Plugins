@@ -11,7 +11,9 @@ dsh Web UI 主题插件：精选皮肤 + 完整自定义主题编辑器 + DreamS
 - **与主题绑定的背景图**：背景图是主题的一部分。上传图片后由 host 存原始字节，主题只保留 URL；可调缩放、横向 / 纵向位置、模糊，实时预览跟随改动。
 - **双格式导入**：一键导入 DreamSkin 包（`manifest.json` + `theme.json` + `theme.css` + 背景图）和 DSH v2 皮肤包（`skin.json` + `skin.css` + 可选 `patches.css` / `hooks.mjs` + assets）。DreamSkin 的颜色、焦点、CSS 部件与 `--ds-theme-*` 变量会翻译；v2 样式、补丁、亮暗背景媒体和经信任确认的 hooks 原样装载。
 - **host 侧包仓库**：每个导入包都完整保留为 `packages/<id>/source.zip`，解包文件在 `packages/<id>/files/`。设置区可列表、选择、导出、删除；`localStorage` 只保留当前选择。
-- **包覆盖编辑**：DreamSkin 包通过 host 侧覆盖层编辑，原包保持不动；DSH v2 包提供 CSS 覆盖编辑器。保存或恢复后立即重应用；导出仍然是原始 zip。
+- **包覆盖编辑**：DreamSkin 包通过 host 侧覆盖层编辑，原包保持不动；DSH v2 包提供 CSS 覆盖编辑器。保存或恢复后立即重应用。
+- **合并导出**：导出按钮默认重打包，把覆盖层合并进 `theme.json`（DreamSkin）或 `skin.css`（DSH v2）；在导出 URL 后加 `?raw=1` 可下载未修改的原包。
+- **编辑器布局**：颜色与数值字段改为响应式多栏网格；可调项新增字体、圆角、表面模糊、阴影色/强度、错误/成功/警告/链接色、代码块/代码栏、密度与动效。
 - **持久化**：导入包与资产存于 host；当前选择和自定义主题仍按浏览器存储。
 
 ## 安装

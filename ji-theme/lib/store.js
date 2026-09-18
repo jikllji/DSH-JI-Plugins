@@ -12,11 +12,13 @@ import { createHash, randomBytes } from 'node:crypto';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readZipEntries } from './zip.js';
+import { writeZipEntries } from './zip-write.js';
 
 export const PACKAGES_PREFIX = '/ji-theme/packages';
+export const PACKAGES_DIR = join(dirname(dirname(fileURLToPath(import.meta.url))), 'packages');
 export const MAX_PACKAGE_UPLOAD_BYTES = 64 * 1024 * 1024;
 
-const STORE_DIR = join(dirname(dirname(fileURLToPath(import.meta.url))), 'packages');
+const STORE_DIR = PACKAGES_DIR;
 const INDEX_FILE = join(STORE_DIR, 'index.json');
 const SOURCE_NAME = 'source.zip';
 const FILES_DIR = 'files';
@@ -372,4 +374,61 @@ export async function removePackageOverrides(id) {
     : join(STORE_DIR, id, OVERRIDES_JSON);
   await fs.rm(file, { force: true });
   return true;
+}
+
+async function readStoredFiles(id) {
+  const root = join(STORE_DIR, id, FILES_DIR);
+  const files = new Map();
+  const walk = async (dir, prefix) => {
+    const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      const full = join(dir, entry.name);
+      const rel = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+      if (entry.isDirectory()) await walk(full, rel);
+      else files.set(rel, await fs.readFile(full));
+    }
+  };
+  await walk(root, '');
+  return files;
+}
+
+/**
+ * Export a package. Merged exports (default) fold the override layer into the
+ * original files; raw exports return the untouched source.zip.
+ */
+export async function exportPackage(id, options = {}) {
+  if (!ID_RE.test(String(id || ''))) return null;
+  const index = await readIndex();
+  const entry = index.packages.find((candidate) => candidate.id === id);
+  if (entry === undefined) return null;
+  if (options.merged === false) {
+    const source = await exportPath(id);
+    if (source === null) return null;
+    return { buffer: await fs.readFile(source), filename: `${id}.zip` };
+  }
+  const files = await readStoredFiles(id);
+  const overrides = await readPackageOverrides(id);
+  if (overrides !== null) {
+    if (entry.format === 'dsh-v2') {
+      if (typeof overrides.css === 'string' && overrides.css.trim().length > 0) {
+        const stylesheet = entry.stylesheet || 'skin.css';
+        const existing = files.get(stylesheet);
+        const merged = existing === undefined
+          ? Buffer.from(overrides.css, 'utf8')
+          : Buffer.concat([existing, Buffer.from('\n/* ji-theme overrides */\n' + overrides.css, 'utf8')]);
+        files.set(stylesheet, merged);
+      }
+    } else if (isRecord(overrides.theme)) {
+      const themeEntry = files.get('theme.json');
+      if (themeEntry !== undefined) {
+        let theme = {};
+        try { const parsed = JSON.parse(themeEntry.toString('utf8')); if (isRecord(parsed)) theme = parsed; } catch {}
+        const merged = Object.assign({}, theme, overrides.theme);
+        delete merged.packageId;
+        delete merged.hasOverrides;
+        files.set('theme.json', Buffer.from(JSON.stringify(merged, null, 2) + '\n', 'utf8'));
+      }
+    }
+  }
+  return { buffer: writeZipEntries(files), filename: `${id}.zip` };
 }

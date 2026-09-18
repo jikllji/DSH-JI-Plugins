@@ -12,6 +12,8 @@ A theme plugin for the dsh Web UI: curated skins, a full custom-theme editor, an
 - **Dual-format import**: import DreamSkin `.zip` packages (`manifest.json` + `theme.json` + `theme.css` + art) and DSH v2 skin packages (`skin.json` + `skin.css` + optional `patches.css` / `hooks.mjs` + assets) in one click. DreamSkin colors, art focus, CSS parts, and `--ds-theme-*` variables are translated; v2 stylesheets, patches, light/dark background media, and trusted hooks install as-is.
 - **Host package store**: every imported ZIP is kept intact as `packages/<id>/source.zip` with extracted files under `packages/<id>/files/`. The settings section lists, selects, exports, and deletes packages; `localStorage` only keeps the active selection.
 - **Package overrides**: DreamSkin packages edit through a host-side override layer (the original package stays untouched); DSH v2 packages expose a CSS override editor. Save or reset re-applies the package immediately; export still returns the original ZIP.
+- **Merged export**: the export button returns a repacked ZIP with the override layer folded into `theme.json` (DreamSkin) or `skin.css` (DSH v2); append `?raw=1` to the export URL for the untouched original.
+- **Editor layout**: color and size fields render in a responsive multi-column grid; adjustable fields cover font family, radius, surface blur, shadow color/strength, error/success/warning/link colors, code block/banner, density, and motion.
 - **Persistence**: imported packages and their assets live on the host; the active selection and custom themes stay in `localStorage`.
 
 ## Install

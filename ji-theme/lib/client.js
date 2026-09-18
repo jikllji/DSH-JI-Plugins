@@ -39,11 +39,12 @@ window.__ModuleLoader__.load({
       "ji-theme.paper": "暖纸", "ji-theme.sakura": "樱花粉",      "ji-theme.new": "新建", "ji-theme.edit": "编辑", "ji-theme.import": "导入",
       "ji-theme.editor.name": "名称", "ji-theme.editor.scheme": "明暗", "ji-theme.editor.light": "浅色", "ji-theme.editor.dark": "深色",
       "ji-theme.editor.baseColor": "会话背景", "ji-theme.editor.surfaceColor": "表面 / 导航栏", "ji-theme.editor.textColor": "主文字",
+      "ji-theme.editor.fontFamily": "字体", "ji-theme.editor.errorColor": "错误色", "ji-theme.editor.successColor": "成功色", "ji-theme.editor.warnColor": "警告色", "ji-theme.editor.linkColor": "链接色", "ji-theme.editor.codeBlockColor": "代码块", "ji-theme.editor.codeBannerColor": "代码栏", "ji-theme.editor.shadowColor": "阴影色", "ji-theme.editor.shadowStrength": "阴影强度", "ji-theme.editor.radius": "圆角", "ji-theme.editor.surfaceBlur": "表面模糊", "ji-theme.editor.density": "密度", "ji-theme.editor.motion": "动效",
       "ji-theme.editor.mutedColor": "次文字", "ji-theme.editor.accentColor": "强调色", "ji-theme.editor.panelAlt": "次级表面", "ji-theme.editor.accentAlt": "强调色·浅", "ji-theme.editor.secondary": "次要色", "ji-theme.editor.highlight": "高亮色", "ji-theme.editor.line": "边框", "ji-theme.editor.opacity": "主区透明度",
       "ji-theme.editor.background": "背景图", "ji-theme.editor.chooseImage": "选择图片", "ji-theme.editor.removeImage": "移除图片",
       "ji-theme.editor.zoom": "缩放", "ji-theme.editor.x": "横向", "ji-theme.editor.y": "纵向", "ji-theme.editor.blur": "模糊", "ji-theme.editor.surfaceOpacity": "表面透明度", "ji-theme.editor.backgroundOpacity": "背景图透明度", "ji-theme.editor.maskOpacity": "遮罩透明度", "ji-theme.preview.chat": "对话", "ji-theme.preview.settings": "设置",
       "ji-theme.editor.save": "保存", "ji-theme.editor.delete": "删除", "ji-theme.editor.cancel": "取消",
-      "ji-theme.missing": "壁纸缺失", "ji-theme.storagePath": "壁纸存储", "ji-theme.uploadError": "上传失败", "ji-theme.tooLarge": "壁纸超过 50MB 上限",
+      "ji-theme.missing": "壁纸缺失", "ji-theme.packageStoragePath": "主题包存储", "ji-theme.uploadError": "上传失败", "ji-theme.tooLarge": "壁纸超过 50MB 上限",
       "ji-theme.packages": "已导入主题包", "ji-theme.packagesEmpty": "暂无主题包", "ji-theme.select": "选择", "ji-theme.selected": "已选", "ji-theme.export": "导出", "ji-theme.delete": "删除", "ji-theme.packageReadonly": "主题包由包管理区维护，请用选择/导出/删除操作",
       "ji-theme.editPackage": "编辑", "ji-theme.cssEdit": "CSS 覆盖编辑", "ji-theme.cssSave": "保存覆盖", "ji-theme.cssReset": "恢复原始",
     };
@@ -53,11 +54,12 @@ window.__ModuleLoader__.load({
       "ji-theme.paper": "Paper", "ji-theme.sakura": "Sakura",      "ji-theme.new": "New", "ji-theme.edit": "Edit", "ji-theme.import": "Import",
       "ji-theme.editor.name": "Name", "ji-theme.editor.scheme": "Scheme", "ji-theme.editor.light": "Light", "ji-theme.editor.dark": "Dark",
       "ji-theme.editor.baseColor": "Session background", "ji-theme.editor.surfaceColor": "Surface / sidebar", "ji-theme.editor.textColor": "Primary text",
+      "ji-theme.editor.fontFamily": "Font", "ji-theme.editor.errorColor": "Error", "ji-theme.editor.successColor": "Success", "ji-theme.editor.warnColor": "Warning", "ji-theme.editor.linkColor": "Link", "ji-theme.editor.codeBlockColor": "Code block", "ji-theme.editor.codeBannerColor": "Code banner", "ji-theme.editor.shadowColor": "Shadow color", "ji-theme.editor.shadowStrength": "Shadow strength", "ji-theme.editor.radius": "Radius", "ji-theme.editor.surfaceBlur": "Surface blur", "ji-theme.editor.density": "Density", "ji-theme.editor.motion": "Motion",
       "ji-theme.editor.mutedColor": "Secondary text", "ji-theme.editor.accentColor": "Accent", "ji-theme.editor.panelAlt": "Surface (alt)", "ji-theme.editor.accentAlt": "Accent (hover)", "ji-theme.editor.secondary": "Secondary", "ji-theme.editor.highlight": "Highlight", "ji-theme.editor.line": "Border", "ji-theme.editor.opacity": "Main opacity",
       "ji-theme.editor.background": "Background image", "ji-theme.editor.chooseImage": "Choose image", "ji-theme.editor.removeImage": "Remove image",
       "ji-theme.editor.zoom": "Zoom", "ji-theme.editor.x": "Horizontal", "ji-theme.editor.y": "Vertical", "ji-theme.editor.blur": "Blur", "ji-theme.editor.surfaceOpacity": "Surface opacity", "ji-theme.editor.backgroundOpacity": "Background opacity", "ji-theme.editor.maskOpacity": "Mask opacity", "ji-theme.preview.chat": "Chat", "ji-theme.preview.settings": "Settings",
       "ji-theme.editor.save": "Save", "ji-theme.editor.delete": "Delete", "ji-theme.editor.cancel": "Cancel",
-      "ji-theme.missing": "wallpaper missing", "ji-theme.storagePath": "Wallpaper storage", "ji-theme.uploadError": "Upload failed", "ji-theme.tooLarge": "Wallpaper exceeds 50MB limit",
+      "ji-theme.missing": "wallpaper missing", "ji-theme.packageStoragePath": "Package storage", "ji-theme.uploadError": "Upload failed", "ji-theme.tooLarge": "Wallpaper exceeds 50MB limit",
       "ji-theme.packages": "Imported packages", "ji-theme.packagesEmpty": "No packages", "ji-theme.select": "Select", "ji-theme.selected": "Selected", "ji-theme.export": "Export", "ji-theme.delete": "Delete", "ji-theme.packageReadonly": "Package themes are managed in the package list",
       "ji-theme.editPackage": "Edit", "ji-theme.cssEdit": "CSS override", "ji-theme.cssSave": "Save override", "ji-theme.cssReset": "Reset",
     };
@@ -190,6 +192,19 @@ window.__ModuleLoader__.load({
         lineColor: t.lineColor ?? t.textColor,
         surfaceOpacity: t.surfaceOpacity ?? 1,
         maskOpacity: t.maskOpacity ?? 0.3,
+        fontFamily: t.fontFamily ?? "",
+        radius: t.radius ?? 12,
+        surfaceBlur: t.surfaceBlur ?? 12,
+        density: t.density ?? 1,
+        motion: t.motion ?? 1,
+        shadowColor: t.shadowColor ?? t.baseColor,
+        shadowStrength: t.shadowStrength ?? 35,
+        errorColor: t.errorColor ?? "#ec1313",
+        successColor: t.successColor ?? "#22c55e",
+        warnColor: t.warnColor ?? "#f59e0b",
+        linkColor: t.linkColor ?? t.accentColor,
+        codeBlockColor: t.codeBlockColor ?? t.surfaceColor,
+        codeBannerColor: t.codeBannerColor ?? (t.panelAltColor ?? t.surfaceColor),
       });
     }
     function loadThemes() {
@@ -234,7 +249,7 @@ window.__ModuleLoader__.load({
     function toAlpha(v, dflt) { const n = Number(v); return clamp01(Number.isFinite(n) ? n : dflt); }
 
     function newCustomTheme() {
-      return { id: "custom-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: "", colorScheme: "dark", baseColor: "#0a1020", surfaceColor: "#16233e", textColor: "#e9eef9", mutedColor: "#a5b3cc", accentColor: "#4d86f8", opacity: 1, background: null, backgroundOpacity: DEFAULT_BG_OPACITY, backgroundBlur: DEFAULT_BG_BLUR, backgroundZoom: 1, backgroundX: 0, backgroundY: 0, panelAltColor: "#16233e", accentAltColor: "#4d86f8", secondaryColor: "#4d86f8", highlightColor: "#4d86f8", lineColor: "#e9eef9", surfaceOpacity: 1, maskOpacity: 0.3 };
+      return { id: "custom-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: "", colorScheme: "dark", baseColor: "#0a1020", surfaceColor: "#16233e", textColor: "#e9eef9", mutedColor: "#a5b3cc", accentColor: "#4d86f8", opacity: 1, background: null, backgroundOpacity: DEFAULT_BG_OPACITY, backgroundBlur: DEFAULT_BG_BLUR, backgroundZoom: 1, backgroundX: 0, backgroundY: 0, panelAltColor: "#16233e", accentAltColor: "#4d86f8", secondaryColor: "#4d86f8", highlightColor: "#4d86f8", lineColor: "#e9eef9", surfaceOpacity: 1, maskOpacity: 0.3, fontFamily: "", radius: 12, surfaceBlur: 12, density: 1, motion: 1, shadowColor: "#000000", shadowStrength: 35, errorColor: "#ec1313", successColor: "#22c55e", warnColor: "#f59e0b", linkColor: "#4d86f8", codeBlockColor: "#16233e", codeBannerColor: "#16233e" };
     }
     function buildCustomTokens(t) {
       const sa = toAlpha(t.surfaceOpacity, 1);
@@ -265,10 +280,12 @@ window.__ModuleLoader__.load({
         "--dsw-alias-button-primary-dimmed": toRgba(t.accentColor, 0.5), "--dsw-alias-button-primary-fill": t.accentColor, "--dsw-alias-button-primary-hover": accentAlt,
         "--dsw-alias-button-info-fill": t.accentColor, "--dsw-alias-button-info-hover": accentAlt,
         "--dsw-alias-state-business-primary": secondary, "--dsw-alias-state-business-tertiary": toRgba(secondary, 0.16),
-        "--dsw-alias-state-error-primary": "#ec1313", "--dsw-alias-state-error-secondary": "#f25a5a",
-        "--dsw-alias-state-success-primary": "#22c55e", "--dsw-alias-state-success-secondary": "#4ed17e", "--dsw-alias-state-success-tertiary": "rgba(34, 197, 94, 0.16)",
-        "--dsw-alias-state-warn-primary": "#f59e0b", "--dsw-alias-state-warn-secondary": "#f7ad31", "--dsw-alias-state-warn-label": "#d97706", "--dsw-alias-state-warn-tertiary": "rgba(245, 158, 11, 0.16)",
-        "--dsw-alias-markdown-code-block": muted, "--dsw-alias-markdown-code-block-banner": panelAltColor, "--dsw-alias-markdown-inline-code": surface,
+        "--dsw-alias-state-error-primary": t.errorColor, "--dsw-alias-state-error-secondary": toRgba(t.errorColor, 0.75),
+        "--dsw-alias-state-success-primary": t.successColor, "--dsw-alias-state-success-secondary": toRgba(t.successColor, 0.75), "--dsw-alias-state-success-tertiary": toRgba(t.successColor, 0.16),
+        "--dsw-alias-state-warn-primary": t.warnColor, "--dsw-alias-state-warn-secondary": toRgba(t.warnColor, 0.75), "--dsw-alias-state-warn-label": toRgba(t.warnColor, 0.9), "--dsw-alias-state-warn-tertiary": toRgba(t.warnColor, 0.16),
+        "--dsw-alias-link": t.linkColor,
+        "--dsw-alias-markdown-code-block": t.codeBlockColor ?? muted, "--dsw-alias-markdown-code-block-banner": t.codeBannerColor ?? panelAltColor, "--dsw-alias-markdown-inline-code": surface,
+        "--dsw-shadow-lv1": "0 1px 3px " + toRgba(t.shadowColor ?? "#000000", (t.shadowStrength ?? 35) / 100 * 0.18), "--dsw-shadow-lv2": "0 4px 14px " + toRgba(t.shadowColor ?? "#000000", (t.shadowStrength ?? 35) / 100 * 0.24), "--dsw-shadow-lv3": "0 12px 32px " + toRgba(t.shadowColor ?? "#000000", (t.shadowStrength ?? 35) / 100 * 0.32),
         "--dsw-alias-markdown-code-segment-selected": surfaceAlt, "--dsw-alias-markdown-code-segment-unselected": base, "--dsw-alias-markdown-placeholder": panelAltColor, "--dsw-alias-markdown-tag": panelAltColor,
         "--dsw-alias-scrollbar-bg-l1": toRgba(t.mutedColor, 0.3), "--dsw-alias-scrollbar-bg-l2": toRgba(t.mutedColor, 0.35), "--dsw-alias-scrollbar-hover-l1": toRgba(t.mutedColor, 0.5), "--dsw-alias-scrollbar-hover-l2": toRgba(t.mutedColor, 0.55),
         "--dsw-alias-toast-bg": panelAltColor, "--dsw-alias-tooltip-bg": panelAltColor,
@@ -310,6 +327,8 @@ window.__ModuleLoader__.load({
       sliderValue: { color: "var(--dsw-alias-label-secondary)", fontSize: "12px", whiteSpace: "nowrap", width: "44px", textAlign: "right" },
       actionRow: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" },
       editor: { display: "flex", flexDirection: "column", gap: "10px", paddingTop: "4px" },
+      editorGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", paddingTop: "4px" },
+      previewRow: { display: "flex", flexWrap: "wrap", gap: "12px", paddingTop: "4px" },
       check: { position: "absolute", top: "3px", right: "3px", width: "16px", height: "16px", borderRadius: "50%", background: "#3b82f6", color: "#ffffff", fontSize: "11px", lineHeight: "16px", textAlign: "center" },
     };
 
@@ -624,17 +643,17 @@ window.__ModuleLoader__.load({
         '--ds-theme-font-family': t.fontFamily || 'inherit',
         '--ds-theme-font-scale': '1',
         '--ds-theme-surface-opacity': String(sa),
-        '--ds-theme-surface-blur': '12px',
-        '--ds-theme-surface-radius': '12px',
+        '--ds-theme-surface-blur': String(t.surfaceBlur ?? 12) + 'px',
+        '--ds-theme-surface-radius': String(t.radius ?? 12) + 'px',
         '--ds-theme-surface-border-alpha': '0.24',
-        '--ds-theme-surface-shadow': '0 10px 30px rgba(0,0,0,0.18)',
+        '--ds-theme-surface-shadow': '0 10px 30px ' + toRgba(t.shadowColor ?? '#000000', (t.shadowStrength ?? 35) / 100 * 0.28),
         '--ds-theme-image-focus-x': String(t.backgroundX ?? 0),
         '--ds-theme-image-focus-y': String(t.backgroundY ?? 0),
         '--ds-theme-image-zoom': String(t.backgroundZoom ?? 1),
         '--ds-theme-image-dim': String(toAlpha(t.backgroundOpacity, DEFAULT_BG_OPACITY)),
         '--ds-theme-image-task-intensity': '1',
-        '--ds-theme-density-scale': '1',
-        '--ds-theme-motion-level': '1',
+        '--ds-theme-density-scale': String(t.density ?? 1),
+        '--ds-theme-motion-level': String(t.motion ?? 1),
       };
     }
     function mapDreamSkinCss(css, draft) {
@@ -660,6 +679,12 @@ window.__ModuleLoader__.load({
         if (body.trim().length > 0) out.push(selectors + '{' + body + '}');
       }
       if (matched === 0) out.push('body{font-family:' + (draft.fontFamily || 'inherit') + '}');
+      const applyExtra = !draft.packageId || draft.hasOverrides === true;
+      if (applyExtra) {
+        out.push('[data-slot="conversation.composer"],[data-composer-card],[data-composer-seat],[role="dialog"],[role="menu"],[data-slot="sidebar"]{border-radius:var(--ds-theme-surface-radius,12px)}');
+        out.push('[data-slot="conversation.composer"],[data-composer-card],[data-composer-seat],[role="dialog"],[role="menu"],[data-slot="sidebar"]{backdrop-filter:blur(var(--ds-theme-surface-blur,12px))}');
+        out.push('body{--ds-transition-duration:calc(var(--ds-theme-motion-level,1) * 0.2s);--ds-transition-duration-fast:calc(var(--ds-theme-motion-level,1) * 0.1s);--ds-transition-duration-slow:calc(var(--ds-theme-motion-level,1) * 0.3s)}');
+      }
       return out.join('\n') + '\ninput, textarea, [contenteditable] { letter-spacing: normal; }';
     }
     function imageMime(name) {
@@ -691,6 +716,18 @@ window.__ModuleLoader__.load({
         highlightColor: c.highlight || c.accent || '#ffffff',
         lineColor: hexFromColor(c.line) || c.text || '#ffffff',
         fontFamily: root ? cssProp(root, 'font-family:') : null,
+        radius: 12,
+        surfaceBlur: 12,
+        density: 1,
+        motion: 1,
+        shadowColor: c.background || '#000000',
+        shadowStrength: 35,
+        errorColor: '#ec1313',
+        successColor: '#22c55e',
+        warnColor: '#f59e0b',
+        linkColor: c.accent || '#ffffff',
+        codeBlockColor: c.panel || c.background || '#000000',
+        codeBannerColor: c.panelAlt || c.panel || c.background || '#000000',
         opacity: 1,
         surfaceOpacity: parsed.surfaceOpacity,
         background: imageDataUrl || null,
@@ -744,7 +781,7 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         if (!contractReady) return;
         let cancelled = false;
-        fetch(requireContract().urlPrefix).then((r) => r.ok ? r.json() : null).then((j) => { if (!cancelled && j && typeof j.path === "string") setStoragePath(j.path); }).catch(() => {});
+        fetch(PACKAGES_URL).then((r) => r.ok ? r.json() : null).then((j) => { if (!cancelled && j && typeof j.path === "string") setStoragePath(j.path); }).catch(() => {});
         return () => { cancelled = true; };
       }, [contractReady]);
 
@@ -916,7 +953,7 @@ window.__ModuleLoader__.load({
 
       return React.createElement("div", { style: S.group },
         React.createElement("div", { style: S.title }, t("ji-theme.title")),
-        storagePath ? React.createElement("div", { style: { color: "var(--dsw-alias-label-tertiary)", fontSize: "11px", lineHeight: "16px", paddingBottom: "4px", wordBreak: "break-all" } }, t("ji-theme.storagePath") + "：" + storagePath) : null,
+        storagePath ? React.createElement("div", { style: { color: "var(--dsw-alias-label-tertiary)", fontSize: "11px", lineHeight: "16px", paddingBottom: "4px", wordBreak: "break-all" } }, t("ji-theme.packageStoragePath") + "：" + storagePath) : null,
         actionError ? React.createElement("div", { style: { color: "var(--dsw-alias-state-error-primary)", fontSize: "12px", lineHeight: "16px", paddingBottom: "4px" } }, actionError) : null,
         React.createElement("div", { style: S.grid },
           React.createElement(Card, { key: "system", selected: pref === "system" && (editing === null || editing.mode === "edit"), onSelect: () => select(DEFAULT_SKIN), label: t("ji-theme.default") }, React.createElement(DefaultSwatch, {})),
@@ -952,42 +989,51 @@ window.__ModuleLoader__.load({
           ),
         ),
         draft === null ? null : React.createElement("div", { style: S.editor },
-          React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } },
-            React.createElement("div", { style: { flex: 1, minWidth: "260px", display: "flex", flexDirection: "column", gap: "10px" } },
-              React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.name")), React.createElement("input", { type: "text", style: S.input, value: draft.name, placeholder: "My theme", onChange: (event) => patch("name", event.target.value) })),
-              React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.scheme")), React.createElement("button", { type: "button", style: S.button, onClick: () => patch("colorScheme", draft.colorScheme === "light" ? "dark" : "light") }, draft.colorScheme === "light" ? t("ji-theme.editor.light") : t("ji-theme.editor.dark"))),
-              React.createElement(ColorField, { label: t("ji-theme.editor.baseColor"), value: draft.baseColor, onChange: (v) => patch("baseColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.surfaceColor"), value: draft.surfaceColor, onChange: (v) => patch("surfaceColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.textColor"), value: draft.textColor, onChange: (v) => patch("textColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.mutedColor"), value: draft.mutedColor, onChange: (v) => patch("mutedColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.accentColor"), value: draft.accentColor, onChange: (v) => patch("accentColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.panelAlt"), value: draft.panelAltColor, onChange: (v) => patch("panelAltColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.accentAlt"), value: draft.accentAltColor, onChange: (v) => patch("accentAltColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.secondary"), value: draft.secondaryColor, onChange: (v) => patch("secondaryColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.highlight"), value: draft.highlightColor, onChange: (v) => patch("highlightColor", v) }),
-              React.createElement(ColorField, { label: t("ji-theme.editor.line"), value: draft.lineColor, onChange: (v) => patch("lineColor", v) }),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
-                React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.chat")),
-                React.createElement(ThemePreview, { draft: draft, scene: "chat" }),
-              ),
-              React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } },
-                React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.settings")),
-                React.createElement(ThemePreview, { draft: draft, scene: "settings" }),
-              ),
-              React.createElement(Slider, { label: t("ji-theme.editor.surfaceOpacity"), value: Math.round((draft.surfaceOpacity ?? 1) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("surfaceOpacity", v / 100) }),
-              React.createElement(Slider, { label: t("ji-theme.editor.backgroundOpacity"), value: Math.round((draft.backgroundOpacity ?? DEFAULT_BG_OPACITY) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("backgroundOpacity", v / 100) }),
-              React.createElement(Slider, { label: t("ji-theme.editor.maskOpacity"), value: Math.round((draft.maskOpacity ?? 0.3) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("maskOpacity", v / 100) }),
-              React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.background")), React.createElement("button", { type: "button", disabled: !contractReady, style: Object.assign({}, S.button, contractReady ? {} : { opacity: 0.5, cursor: "not-allowed" }), onClick: () => { if (contractReady) bgInputRef.current?.click(); } }, t("ji-theme.editor.chooseImage")), draft.background ? React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: () => { cleanupUnsavedBackground(draft); patch("background", null); } }, t("ji-theme.editor.removeImage")) : null, React.createElement("input", { ref: bgInputRef, type: "file", accept: "image/*", style: { display: "none" }, onChange: onBgFile })),
-              draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.zoom"), value: Math.round((draft.backgroundZoom ?? 1) * 100), min: 100, max: 300, step: 1, format: (v) => v + "%", onChange: (v) => patch("backgroundZoom", v / 100) }) : null,
-              draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.x"), value: Math.round(draft.backgroundX ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundX", v) }) : null,
-              draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.y"), value: Math.round(draft.backgroundY ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundY", v) }) : null,
-              draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.blur"), value: Math.round(draft.backgroundBlur ?? 0), min: 0, max: 60, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundBlur", v) }) : null,
-              React.createElement("div", { style: S.actionRow },
-                React.createElement("button", { type: "button", style: S.button, onClick: save }, t("ji-theme.editor.save")),
-                React.createElement("button", { type: "button", style: S.button, onClick: discardDraft }, t("ji-theme.editor.cancel")),
-                React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: remove }, draft.packageId ? t("ji-theme.cssReset") : t("ji-theme.editor.delete")),
-              ),
-            ),
+          React.createElement("div", { style: S.editorGrid },
+            React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.name")), React.createElement("input", { type: "text", style: S.input, value: draft.name, placeholder: "My theme", onChange: (event) => patch("name", event.target.value) })),
+            React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.scheme")), React.createElement("button", { type: "button", style: S.button, onClick: () => patch("colorScheme", draft.colorScheme === "light" ? "dark" : "light") }, draft.colorScheme === "light" ? t("ji-theme.editor.light") : t("ji-theme.editor.dark"))),
+            React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.fontFamily")), React.createElement("input", { type: "text", style: S.input, value: draft.fontFamily ?? "", placeholder: "ui-rounded, system-ui", onChange: (event) => patch("fontFamily", event.target.value) })),
+            React.createElement(ColorField, { label: t("ji-theme.editor.baseColor"), value: draft.baseColor, onChange: (v) => patch("baseColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.surfaceColor"), value: draft.surfaceColor, onChange: (v) => patch("surfaceColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.textColor"), value: draft.textColor, onChange: (v) => patch("textColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.mutedColor"), value: draft.mutedColor, onChange: (v) => patch("mutedColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.accentColor"), value: draft.accentColor, onChange: (v) => patch("accentColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.panelAlt"), value: draft.panelAltColor, onChange: (v) => patch("panelAltColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.accentAlt"), value: draft.accentAltColor, onChange: (v) => patch("accentAltColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.secondary"), value: draft.secondaryColor, onChange: (v) => patch("secondaryColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.highlight"), value: draft.highlightColor, onChange: (v) => patch("highlightColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.line"), value: draft.lineColor, onChange: (v) => patch("lineColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.errorColor"), value: draft.errorColor, onChange: (v) => patch("errorColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.successColor"), value: draft.successColor, onChange: (v) => patch("successColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.warnColor"), value: draft.warnColor, onChange: (v) => patch("warnColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.linkColor"), value: draft.linkColor, onChange: (v) => patch("linkColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.codeBlockColor"), value: draft.codeBlockColor, onChange: (v) => patch("codeBlockColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.codeBannerColor"), value: draft.codeBannerColor, onChange: (v) => patch("codeBannerColor", v) }),
+            React.createElement(ColorField, { label: t("ji-theme.editor.shadowColor"), value: draft.shadowColor, onChange: (v) => patch("shadowColor", v) }),
+          ),
+          React.createElement("div", { style: S.previewRow },
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } }, React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.chat")), React.createElement(ThemePreview, { draft: draft, scene: "chat" })),
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } }, React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.settings")), React.createElement(ThemePreview, { draft: draft, scene: "settings" })),
+          ),
+          React.createElement("div", { style: S.editorGrid },
+            React.createElement(Slider, { label: t("ji-theme.editor.surfaceOpacity"), value: Math.round((draft.surfaceOpacity ?? 1) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("surfaceOpacity", v / 100) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.backgroundOpacity"), value: Math.round((draft.backgroundOpacity ?? DEFAULT_BG_OPACITY) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("backgroundOpacity", v / 100) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.maskOpacity"), value: Math.round((draft.maskOpacity ?? 0.3) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("maskOpacity", v / 100) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.radius"), value: Number(draft.radius ?? 12), min: 0, max: 32, step: 1, format: (v) => v + "px", onChange: (v) => patch("radius", v) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.surfaceBlur"), value: Number(draft.surfaceBlur ?? 12), min: 0, max: 40, step: 1, format: (v) => v + "px", onChange: (v) => patch("surfaceBlur", v) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.shadowStrength"), value: Math.round(Number(draft.shadowStrength ?? 35)), min: 0, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("shadowStrength", v) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.density"), value: Number(draft.density ?? 1), min: 0.8, max: 1.4, step: 0.05, format: (v) => Number(v).toFixed(2) + "x", onChange: (v) => patch("density", v) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.motion"), value: Number(draft.motion ?? 1), min: 0, max: 1, step: 0.05, format: (v) => Math.round(Number(v) * 100) + "%", onChange: (v) => patch("motion", v) }),
+            React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.background")), React.createElement("button", { type: "button", disabled: !contractReady, style: Object.assign({}, S.button, contractReady ? {} : { opacity: 0.5, cursor: "not-allowed" }), onClick: () => { if (contractReady) bgInputRef.current?.click(); } }, t("ji-theme.editor.chooseImage")), draft.background ? React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: () => { cleanupUnsavedBackground(draft); patch("background", null); } }, t("ji-theme.editor.removeImage")) : null, React.createElement("input", { ref: bgInputRef, type: "file", accept: "image/*", style: { display: "none" }, onChange: onBgFile })),
+            draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.zoom"), value: Math.round((draft.backgroundZoom ?? 1) * 100), min: 100, max: 300, step: 1, format: (v) => v + "%", onChange: (v) => patch("backgroundZoom", v / 100) }) : null,
+            draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.x"), value: Math.round(draft.backgroundX ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundX", v) }) : null,
+            draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.y"), value: Math.round(draft.backgroundY ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundY", v) }) : null,
+            draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.blur"), value: Math.round(draft.backgroundBlur ?? 0), min: 0, max: 60, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundBlur", v) }) : null,
+          ),
+          React.createElement("div", { style: S.actionRow },
+            React.createElement("button", { type: "button", style: S.button, onClick: save }, t("ji-theme.editor.save")),
+            React.createElement("button", { type: "button", style: S.button, onClick: discardDraft }, t("ji-theme.editor.cancel")),
+            React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: remove }, draft.packageId ? t("ji-theme.cssReset") : t("ji-theme.editor.delete")),
           ),
         ),
       );

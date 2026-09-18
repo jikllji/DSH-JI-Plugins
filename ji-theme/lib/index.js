@@ -50,12 +50,13 @@ import {
 } from './contract.js';
 import {
   PACKAGES_PREFIX,
+  PACKAGES_DIR,
   MAX_PACKAGE_UPLOAD_BYTES,
   importPackage,
   listPackages,
   removePackage,
   resolvePackageAsset,
-  exportPath,
+  exportPackage,
   readPackageOverrides,
   writePackageOverrides,
   removePackageOverrides,
@@ -224,7 +225,7 @@ export function apply(ctx) {
       const rest = pathname.slice(PACKAGES_PREFIX.length);
 
       if (method === 'GET' && (rest === '' || rest === '/')) {
-        sendJson(res, 200, { version: 1, packages: await listPackages() });
+        sendJson(res, 200, { version: 1, path: PACKAGES_DIR, packages: await listPackages() });
         return;
       }
 
@@ -257,9 +258,17 @@ export function apply(ctx) {
       }
 
       if (method === 'GET' && parts.length === 1 && parts[0] === 'export') {
-        const file = await exportPath(id);
-        if (file === null) { sendError(res, 'NOT_FOUND'); return; }
-        serveFile(res, file, 'application/zip', `attachment; filename="${id}.zip"`);
+        let raw = false;
+        try { raw = new URL(req.url || '/', 'http://localhost').searchParams.get('raw') === '1'; } catch {}
+        const exported = await exportPackage(id, { merged: !raw });
+        if (exported === null) { sendError(res, 'NOT_FOUND'); return; }
+        res.writeHead(200, {
+          'Content-Type': 'application/zip',
+          'Content-Length': exported.buffer.length,
+          'Content-Disposition': `attachment; filename="${exported.filename}"`,
+          'Cache-Control': 'no-store',
+        });
+        res.end(exported.buffer);
         return;
       }
 
