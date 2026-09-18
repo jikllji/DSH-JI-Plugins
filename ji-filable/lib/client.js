@@ -340,17 +340,45 @@ function appendRef(draft, ref) {
     }
 
     // ── drop capture ──────────────────────────────────────────────────────
+    // The current Session identity for the document-level drop path. DSH
+    // 0.1.6-alpha.2 moved "the session on screen" out of the sessions service:
+    // its list snapshot no longer carries `current` (multi-instance Sessions
+    // made navigation a view-owner concern). The plugin therefore learns the
+    // identity from its own session-scoped dock component, which receives it
+    // as a prop. The legacy list field stays as the fallback for older hosts.
+    var dockSessionId;
+
+    function normalizeSessionId(sid) {
+      return sid === undefined || sid === null ? undefined : String(sid);
+    }
+
+    /// Record the Session a session-scoped dock component is bound to.
+    function setDockSession(sid) {
+      var next = normalizeSessionId(sid);
+      if (dockSessionId === next) return;
+      if (dockSessionId !== undefined) clearChips();
+      dockSessionId = next;
+    }
+
+    /// Release the binding only while it still belongs to this dock mount.
+    function clearDockSession(sid) {
+      if (dockSessionId === normalizeSessionId(sid)) setDockSession(undefined);
+    }
+
     function getCurrentSession(sessions) {
+      if (dockSessionId !== undefined) return dockSessionId;
       try {
         var snapshot = sessions.list.getSnapshot();
         return snapshot && snapshot.current;
       } catch (error) { return undefined; }
     }
 
-    // Insert an `@file` mention into the current session's composer draft.
-    // Mirrors the internal QueueDock pattern: resolve the session-scoped ctx,
-    // then conversation.input.for(actx).setDraft(...). Best-effort: any
-    // resolution failure or non-'plain' phase aborts silently.
+    // Insert a structured `@file` reference chip into the current session's
+    // composer draft through the shell's scoped insert-reference event. A chip
+    // insert replaces one span, so chips already in the draft survive — unlike
+    // setDraft, which rebuilds the whole document from plain text and flattens
+    // every existing chip into literal text. Best-effort: a resolution failure,
+    // a non-'plain' phase, or a stale-revision CAS miss aborts silently.
     function insertRef(ctx, name) {
       var sessions = ctx.get('sessions') || ctx.sessions;
       if (!sessions) return;
@@ -366,7 +394,29 @@ function appendRef(draft, ref) {
         if (!state || state.phase !== 'plain') return;
         var ref = sessionfilesRef(name);
         if (ref === null || ref === undefined) return;
-        input.setDraft(appendRef(state.draft, ref));
+        // TokenSpan carries DETECT coordinates, where an existing chip counts as
+        // one U+FFFC while state.draft (clipboard text) expands it to its
+        // clipboardText. A collapsed span at the detect end appends the chip.
+        var occurrences = state.occurrences || [];
+        var expanded = 0;
+        for (var i = 0; i < occurrences.length; i++) {
+          expanded += occurrences[i].length - 1;
+        }
+        var at = state.draft.length - expanded;
+        if (at < 0) return;
+        actx.bail(actx, 'slash/input-insert-reference', {
+          // The built-in `reference` source's codec is identity
+          // (clipboardText/serialize return the ref), so the chip renders like
+          // any other @file chip and the model still receives this exact text.
+          reference: {
+            source: 'reference',
+            ref: ref,
+            label: String(name),
+            appearance: 'file',
+            clipboardText: ref,
+          },
+          span: { start: at, end: at, draftRev: state.draftRev },
+        });
       } catch (error) { /* insert is best-effort */ }
     }
 
@@ -550,7 +600,17 @@ function appendRef(draft, ref) {
       });
 
       ctx.slots.inject("conversation.input.dock", function () {
-        return ctx.slots.register({ name: "conversation.input.dock", id: "ji-filable-files", order: 25 }, function () {
+        return ctx.slots.register({ name: "conversation.input.dock", id: "ji-filable-files", order: 25 }, function (props) {
+          // The dock is session-scoped: its props carry the Session identity this
+          // composer belongs to. Recording it is what tells the document-level
+          // drop handlers which Session is on screen.
+          var sid = props && (props.sessionId !== undefined
+            ? props.sessionId
+            : (props.session && props.session.sessionId));
+          React.useEffect(function () {
+            setDockSession(sid);
+            return function () { clearDockSession(sid); };
+          }, [sid]);
           return React.createElement(ChipRow, { t: ctx.locale.bind(NS), onInsert: function (name) { insertRef(ctx, name); }, onRemove: function (id) { removeChip(id); } });
         });
       });

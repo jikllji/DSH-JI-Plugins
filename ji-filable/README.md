@@ -4,7 +4,7 @@
 
 DSH 的文件上传插件:把**非图片**文件拖进聊天,按**原始文件名**无损落盘到会话工作区的 `sessionfiles/` 目录——用户可在资源管理器浏览,agent 用现有工具(glob/read)直接读取。
 
-当前版本 **0.4.0**。
+当前版本 **0.4.1**。
 
 ## 功能
 
@@ -66,5 +66,6 @@ node scripts/build-client.mjs
 
 ## 版本
 
+- **0.4.1** — 适配 DSH **0.1.6-alpha.2**:该版本把「当前会话」从 sessions 服务的快照(`list.current`)移交给视图层,拖放与「插入 @地址」改为从插件自己的会话作用域 dock 组件(`props.sessionId`)取会话身份,修掉「明明开着会话却提示『先打开一个会话』」;`list.current` 仍作为老宿主的兜底保留。
 - **0.4.0** — 修复「插入 @地址」破坏草稿已有引用的问题(改走 `slash/input-insert-reference`);按 DSH **0.1.6-alpha.1** 的输入框契约核对实现;README 补齐 chip 动作、混拖/提示、上限与 `maxBytes`。
 - 0.2.0 — 适配 DSH 0.1.2-rc.1。
