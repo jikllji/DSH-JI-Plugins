@@ -14,6 +14,8 @@ window.__ModuleLoader__.load({
     const STORAGE_MIGRATED = "ji-theme:wallpapers-migrated-v1";
     const STORAGE_PACKAGE = "ji-theme:package";
     const STORAGE_TRUSTED_HOOKS = "ji-theme:trusted-hooks";
+    const STORAGE_STYLE_CLIP = "ji-theme:style-clip";
+    const STORAGE_STYLE_PRESETS = "ji-theme:style-presets";
     const PACKAGES_URL = "/ji-theme/packages";
     // The wallpaper contract (C1 / Q3-B) is fetched at runtime from the host —
     // the browser half never mirrors media types, size caps, or URL rules.
@@ -23,6 +25,19 @@ window.__ModuleLoader__.load({
     const DEFAULT_BG_BLUR = 0;
     const OVERRIDE_SOURCE = "ji-theme:background";
     const BUILTIN_BASE = { light: "rgb(255, 255, 255)", dark: "rgb(21, 21, 23)" };
+
+    // Built-in skins as the first-run seed (5-field model).
+    const COLOR_KEYS = ["baseColor", "surfaceColor", "textColor", "mutedColor", "accentColor", "panelAltColor", "accentAltColor", "secondaryColor", "highlightColor", "lineColor", "errorColor", "successColor", "warnColor", "linkColor", "codeBlockColor", "codeBannerColor", "shadowColor", "borderColor"];
+    const PART_KEYS = ["sidebar", "panel", "composer", "dialog", "message", "menu", "tool"];
+    // Non-color half of a theme: borders / opacity / effects / font. The palette is
+    // deliberately excluded — a snippet borrows another theme's shape, not its
+    // colors. The background image is theme identity too, so only its opacity travels.
+    const STYLE_KEYS = ["fontFamily", "radius", "surfaceBlur", "density", "motion", "shadowStrength", "borderWidth", "borderStyle", "borderOpacity", "themeOpacity", "surfaceOpacity", "maskOpacity", "backgroundOpacity"];
+    const STYLE_DEFAULTS = { fontFamily: "", radius: 12, surfaceBlur: 12, density: 1, motion: 1, shadowStrength: 35, borderWidth: 1, borderStyle: "solid", borderOpacity: 24, themeOpacity: 100, surfaceOpacity: 1, maskOpacity: 0.3, backgroundOpacity: DEFAULT_BG_OPACITY };
+    const COLOR_LABELS = { baseColor: "baseColor", surfaceColor: "surfaceColor", textColor: "textColor", mutedColor: "mutedColor", accentColor: "accentColor", panelAltColor: "panelAlt", accentAltColor: "accentAlt", secondaryColor: "secondary", highlightColor: "highlight", lineColor: "line", errorColor: "errorColor", successColor: "successColor", warnColor: "warnColor", linkColor: "linkColor", codeBlockColor: "codeBlockColor", codeBannerColor: "codeBannerColor", shadowColor: "shadowColor", borderColor: "borderColor" };
+    const DEFAULT_COLOR_ALPHA = Object.fromEntries(COLOR_KEYS.map((key) => [key, 1]));
+    const DEFAULT_COLOR_ENABLED = Object.fromEntries(COLOR_KEYS.map((key) => [key, true]));
+    const DEFAULT_PART_OPACITY = Object.fromEntries(PART_KEYS.map((key) => [key, 100]));
 
     // Built-in skins as the first-run seed (5-field model).
     const SEED_THEMES = [
@@ -40,13 +55,21 @@ window.__ModuleLoader__.load({
       "ji-theme.editor.name": "名称", "ji-theme.editor.scheme": "明暗", "ji-theme.editor.light": "浅色", "ji-theme.editor.dark": "深色",
       "ji-theme.editor.baseColor": "会话背景", "ji-theme.editor.surfaceColor": "表面 / 导航栏", "ji-theme.editor.textColor": "主文字",
       "ji-theme.editor.fontFamily": "字体", "ji-theme.editor.errorColor": "错误色", "ji-theme.editor.successColor": "成功色", "ji-theme.editor.warnColor": "警告色", "ji-theme.editor.linkColor": "链接色", "ji-theme.editor.codeBlockColor": "代码块", "ji-theme.editor.codeBannerColor": "代码栏", "ji-theme.editor.shadowColor": "阴影色", "ji-theme.editor.shadowStrength": "阴影强度", "ji-theme.editor.radius": "圆角", "ji-theme.editor.surfaceBlur": "表面模糊", "ji-theme.editor.density": "密度", "ji-theme.editor.motion": "动效",
+      "ji-theme.editor.borderColor": "边框色", "ji-theme.editor.borderWidth": "边框宽", "ji-theme.editor.borderStyle": "边框样式", "ji-theme.editor.borderOpacity": "边框透明", "ji-theme.editor.themeOpacity": "整体透明", "ji-theme.editor.panelOpacity": "面板透明", "ji-theme.editor.composerOpacity": "输入框透明", "ji-theme.editor.dialogOpacity": "对话框透明",
+      "ji-theme.editor.part.sidebar": "侧栏透明", "ji-theme.editor.part.panel": "面板透明", "ji-theme.editor.part.composer": "输入框透明", "ji-theme.editor.part.dialog": "对话框透明", "ji-theme.editor.part.message": "消息透明", "ji-theme.editor.part.menu": "菜单透明",
+      "ji-theme.editor.part.tool": "工具行透明",
       "ji-theme.editor.mutedColor": "次文字", "ji-theme.editor.accentColor": "强调色", "ji-theme.editor.panelAlt": "次级表面", "ji-theme.editor.accentAlt": "强调色·浅", "ji-theme.editor.secondary": "次要色", "ji-theme.editor.highlight": "高亮色", "ji-theme.editor.line": "边框", "ji-theme.editor.opacity": "主区透明度",
       "ji-theme.editor.background": "背景图", "ji-theme.editor.chooseImage": "选择图片", "ji-theme.editor.removeImage": "移除图片",
       "ji-theme.editor.zoom": "缩放", "ji-theme.editor.x": "横向", "ji-theme.editor.y": "纵向", "ji-theme.editor.blur": "模糊", "ji-theme.editor.surfaceOpacity": "表面透明度", "ji-theme.editor.backgroundOpacity": "背景图透明度", "ji-theme.editor.maskOpacity": "遮罩透明度", "ji-theme.preview.chat": "对话", "ji-theme.preview.settings": "设置",
       "ji-theme.editor.save": "保存", "ji-theme.editor.delete": "删除", "ji-theme.editor.cancel": "取消",
+      "ji-theme.editor.done": "完成", "ji-theme.editor.resetTheme": "重置本主题",
       "ji-theme.missing": "壁纸缺失", "ji-theme.packageStoragePath": "主题包存储", "ji-theme.uploadError": "上传失败", "ji-theme.tooLarge": "壁纸超过 50MB 上限",
       "ji-theme.packages": "已导入主题包", "ji-theme.packagesEmpty": "暂无主题包", "ji-theme.select": "选择", "ji-theme.selected": "已选", "ji-theme.export": "导出", "ji-theme.delete": "删除", "ji-theme.packageReadonly": "主题包由包管理区维护，请用选择/导出/删除操作",
       "ji-theme.editPackage": "编辑", "ji-theme.cssEdit": "CSS 覆盖编辑", "ji-theme.cssSave": "保存覆盖", "ji-theme.cssReset": "恢复原始",
+      "ji-theme.style.title": "样式片段", "ji-theme.style.copy": "复制样式", "ji-theme.style.paste": "粘贴样式", "ji-theme.style.save": "存为预设",
+      "ji-theme.style.promptName": "预设名称", "ji-theme.style.defaultName": "样式", "ji-theme.style.apply": "应用", "ji-theme.style.remove": "删除", "ji-theme.style.confirm": "确定",
+      "ji-theme.style.copied": "已复制当前样式", "ji-theme.style.applied": "已应用样式", "ji-theme.style.saved": "已保存预设",
+      "ji-theme.style.presetsEmpty": "暂无预设：点「存为预设」保存当前样式，之后在任意主题里点「应用」即可套用。",
     };
     const en = {
       "ji-theme.title": "Theme", "ji-theme.default": "System",
@@ -55,13 +78,21 @@ window.__ModuleLoader__.load({
       "ji-theme.editor.name": "Name", "ji-theme.editor.scheme": "Scheme", "ji-theme.editor.light": "Light", "ji-theme.editor.dark": "Dark",
       "ji-theme.editor.baseColor": "Session background", "ji-theme.editor.surfaceColor": "Surface / sidebar", "ji-theme.editor.textColor": "Primary text",
       "ji-theme.editor.fontFamily": "Font", "ji-theme.editor.errorColor": "Error", "ji-theme.editor.successColor": "Success", "ji-theme.editor.warnColor": "Warning", "ji-theme.editor.linkColor": "Link", "ji-theme.editor.codeBlockColor": "Code block", "ji-theme.editor.codeBannerColor": "Code banner", "ji-theme.editor.shadowColor": "Shadow color", "ji-theme.editor.shadowStrength": "Shadow strength", "ji-theme.editor.radius": "Radius", "ji-theme.editor.surfaceBlur": "Surface blur", "ji-theme.editor.density": "Density", "ji-theme.editor.motion": "Motion",
+      "ji-theme.editor.borderColor": "Border color", "ji-theme.editor.borderWidth": "Border width", "ji-theme.editor.borderStyle": "Border style", "ji-theme.editor.borderOpacity": "Border opacity", "ji-theme.editor.themeOpacity": "Theme opacity", "ji-theme.editor.panelOpacity": "Panel opacity", "ji-theme.editor.composerOpacity": "Composer opacity", "ji-theme.editor.dialogOpacity": "Dialog opacity",
+      "ji-theme.editor.part.sidebar": "Sidebar opacity", "ji-theme.editor.part.panel": "Panel opacity", "ji-theme.editor.part.composer": "Composer opacity", "ji-theme.editor.part.dialog": "Dialog opacity", "ji-theme.editor.part.message": "Message opacity", "ji-theme.editor.part.menu": "Menu opacity",
+      "ji-theme.editor.part.tool": "Tool row opacity",
       "ji-theme.editor.mutedColor": "Secondary text", "ji-theme.editor.accentColor": "Accent", "ji-theme.editor.panelAlt": "Surface (alt)", "ji-theme.editor.accentAlt": "Accent (hover)", "ji-theme.editor.secondary": "Secondary", "ji-theme.editor.highlight": "Highlight", "ji-theme.editor.line": "Border", "ji-theme.editor.opacity": "Main opacity",
       "ji-theme.editor.background": "Background image", "ji-theme.editor.chooseImage": "Choose image", "ji-theme.editor.removeImage": "Remove image",
       "ji-theme.editor.zoom": "Zoom", "ji-theme.editor.x": "Horizontal", "ji-theme.editor.y": "Vertical", "ji-theme.editor.blur": "Blur", "ji-theme.editor.surfaceOpacity": "Surface opacity", "ji-theme.editor.backgroundOpacity": "Background opacity", "ji-theme.editor.maskOpacity": "Mask opacity", "ji-theme.preview.chat": "Chat", "ji-theme.preview.settings": "Settings",
       "ji-theme.editor.save": "Save", "ji-theme.editor.delete": "Delete", "ji-theme.editor.cancel": "Cancel",
+      "ji-theme.editor.done": "Done", "ji-theme.editor.resetTheme": "Reset theme",
       "ji-theme.missing": "wallpaper missing", "ji-theme.packageStoragePath": "Package storage", "ji-theme.uploadError": "Upload failed", "ji-theme.tooLarge": "Wallpaper exceeds 50MB limit",
       "ji-theme.packages": "Imported packages", "ji-theme.packagesEmpty": "No packages", "ji-theme.select": "Select", "ji-theme.selected": "Selected", "ji-theme.export": "Export", "ji-theme.delete": "Delete", "ji-theme.packageReadonly": "Package themes are managed in the package list",
       "ji-theme.editPackage": "Edit", "ji-theme.cssEdit": "CSS override", "ji-theme.cssSave": "Save override", "ji-theme.cssReset": "Reset",
+      "ji-theme.style.title": "Style snippet", "ji-theme.style.copy": "Copy style", "ji-theme.style.paste": "Paste style", "ji-theme.style.save": "Save preset",
+      "ji-theme.style.promptName": "Preset name", "ji-theme.style.defaultName": "Style", "ji-theme.style.apply": "Apply", "ji-theme.style.remove": "Delete", "ji-theme.style.confirm": "OK",
+      "ji-theme.style.copied": "Style copied", "ji-theme.style.applied": "Style applied", "ji-theme.style.saved": "Preset saved",
+      "ji-theme.style.presetsEmpty": "No presets yet: use Save preset to store this style, then Apply it in any other theme.",
     };
 
     function readStorage(key) { try { const v = window.localStorage.getItem(key); return typeof v === "string" ? v : null; } catch { return null; } }
@@ -190,6 +221,17 @@ window.__ModuleLoader__.load({
         secondaryColor: t.secondaryColor ?? t.accentColor,
         highlightColor: t.highlightColor ?? t.accentColor,
         lineColor: t.lineColor ?? t.textColor,
+        borderColor: t.borderColor ?? t.lineColor ?? t.textColor,
+        borderWidth: t.borderWidth ?? 1,
+        borderStyle: t.borderStyle ?? "solid",
+        borderOpacity: t.borderOpacity ?? 24,
+        themeOpacity: t.themeOpacity ?? 100,
+        panelOpacity: t.panelOpacity ?? 100,
+        composerOpacity: t.composerOpacity ?? 100,
+        dialogOpacity: t.dialogOpacity ?? 100,
+        colorAlpha: Object.assign({}, DEFAULT_COLOR_ALPHA, t.colorAlpha || {}),
+        colorEnabled: Object.assign({}, DEFAULT_COLOR_ENABLED, t.colorEnabled || {}),
+        partOpacity: Object.assign({}, DEFAULT_PART_OPACITY, t.partOpacity || {}),
         surfaceOpacity: t.surfaceOpacity ?? 1,
         maskOpacity: t.maskOpacity ?? 0.3,
         fontFamily: t.fontFamily ?? "",
@@ -247,51 +289,107 @@ window.__ModuleLoader__.load({
     }
     function clamp01(v) { return Math.min(1, Math.max(0, v)); }
     function toAlpha(v, dflt) { const n = Number(v); return clamp01(Number.isFinite(n) ? n : dflt); }
+    function colorEnabledOf(t, key) { return !(t.colorEnabled && t.colorEnabled[key] === false); }
+    function colorAlphaOf(t, key) { return clamp01(t.colorAlpha && typeof t.colorAlpha[key] === "number" ? t.colorAlpha[key] : 1); }
+    function effectiveColor(t, key) { return colorEnabledOf(t, key) ? toRgba(t[key], colorAlphaOf(t, key)) : "rgba(0, 0, 0, 0)"; }
 
     function newCustomTheme() {
-      return { id: "custom-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: "", colorScheme: "dark", baseColor: "#0a1020", surfaceColor: "#16233e", textColor: "#e9eef9", mutedColor: "#a5b3cc", accentColor: "#4d86f8", opacity: 1, background: null, backgroundOpacity: DEFAULT_BG_OPACITY, backgroundBlur: DEFAULT_BG_BLUR, backgroundZoom: 1, backgroundX: 0, backgroundY: 0, panelAltColor: "#16233e", accentAltColor: "#4d86f8", secondaryColor: "#4d86f8", highlightColor: "#4d86f8", lineColor: "#e9eef9", surfaceOpacity: 1, maskOpacity: 0.3, fontFamily: "", radius: 12, surfaceBlur: 12, density: 1, motion: 1, shadowColor: "#000000", shadowStrength: 35, errorColor: "#ec1313", successColor: "#22c55e", warnColor: "#f59e0b", linkColor: "#4d86f8", codeBlockColor: "#16233e", codeBannerColor: "#16233e" };
+      return { id: "custom-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: "", colorScheme: "dark", baseColor: "#0a1020", surfaceColor: "#16233e", textColor: "#e9eef9", mutedColor: "#a5b3cc", accentColor: "#4d86f8", opacity: 1, background: null, backgroundOpacity: DEFAULT_BG_OPACITY, backgroundBlur: DEFAULT_BG_BLUR, backgroundZoom: 1, backgroundX: 0, backgroundY: 0, panelAltColor: "#16233e", accentAltColor: "#4d86f8", secondaryColor: "#4d86f8", highlightColor: "#4d86f8", lineColor: "#e9eef9", borderColor: "#e9eef9", borderWidth: 1, borderStyle: "solid", borderOpacity: 24, themeOpacity: 100, panelOpacity: 100, composerOpacity: 100, dialogOpacity: 100, surfaceOpacity: 1, maskOpacity: 0.3, fontFamily: "", radius: 12, surfaceBlur: 12, density: 1, motion: 1, shadowColor: "#000000", shadowStrength: 35, errorColor: "#ec1313", successColor: "#22c55e", warnColor: "#f59e0b", linkColor: "#4d86f8", codeBlockColor: "#16233e", codeBannerColor: "#16233e" };
+    }
+    // ---- style snippets: copy the non-color config between themes ----
+    function styleSnapshotOf(theme) {
+      const fields = {};
+      for (const key of STYLE_KEYS) fields[key] = theme[key] ?? STYLE_DEFAULTS[key];
+      const partOpacity = {};
+      for (const key of PART_KEYS) partOpacity[key] = Math.round((theme.partOpacity && theme.partOpacity[key]) ?? 100);
+      return { v: 1, name: theme.name || "", at: Date.now(), fields: fields, partOpacity: partOpacity };
+    }
+    // Foreign or stale JSON must never leak unknown keys into a draft: the snapshot
+    // is re-projected onto the known field list and the opacities are clamped.
+    function stylePatchOf(snapshot) {
+      if (snapshot === null || typeof snapshot !== "object" || !snapshot.fields) return null;
+      const fields = {};
+      let seen = false;
+      for (const key of STYLE_KEYS) {
+        const value = snapshot.fields[key];
+        if (value === undefined || value === null) continue;
+        fields[key] = value;
+        seen = true;
+      }
+      if (!seen) return null;
+      const partOpacity = {};
+      for (const key of PART_KEYS) {
+        const value = Number(snapshot.partOpacity ? snapshot.partOpacity[key] : NaN);
+        if (Number.isFinite(value)) partOpacity[key] = Math.min(100, Math.max(0, value));
+      }
+      fields.partOpacity = Object.assign({}, DEFAULT_PART_OPACITY, partOpacity);
+      return fields;
+    }
+    function readStyleSnapshot() { try { const p = JSON.parse(readStorage(STORAGE_STYLE_CLIP) || "null"); return p !== null && typeof p === "object" && p.fields ? p : null; } catch { return null; } }
+    function readStylePresets() { try { const p = JSON.parse(readStorage(STORAGE_STYLE_PRESETS) || "[]"); return Array.isArray(p) ? p.filter((x) => x !== null && typeof x === "object" && x.fields) : []; } catch { return []; } }
+    function writeStylePresets(list) { writeStorage(STORAGE_STYLE_PRESETS, JSON.stringify(list)); }
+    // ---- end style snippets ----
+    // Guarded self-check (tools/check-client.mjs flips the flag): the snippet
+    // parser re-reads localStorage JSON, so its shape rules must hold.
+    if (globalThis.__JI_THEME_SELFTEST__ === true) {
+      const snap = styleSnapshotOf({ name: "selftest", radius: 4, borderWidth: 3, partOpacity: { tool: 0 } });
+      const back = stylePatchOf(snap);
+      if (!(back.radius === 4 && back.borderWidth === 3 && back.partOpacity.tool === 0 && back.partOpacity.sidebar === 100)) throw new Error("style snippet roundtrip failed");
+      if (stylePatchOf({ fields: { junk: 1 } }) !== null) throw new Error("style snippet must reject unknown keys");
+      if ("baseColor" in back || "colorAlpha" in back || "background" in back) throw new Error("style snippet must not carry palette or wallpaper");
+      if (readStylePresets().length !== 0) throw new Error("preset store must start empty");
+      writeStylePresets([snap]);
+      if (readStylePresets().length !== 1 || stylePatchOf(readStylePresets()[0]).radius !== 4) throw new Error("preset roundtrip failed");
+      writeStylePresets([]);
     }
     function buildCustomTokens(t) {
-      const sa = toAlpha(t.surfaceOpacity, 1);
+      const globalAlpha = clamp01((t.themeOpacity ?? 100) / 100);
+      const surfaceAlpha = clamp01(toAlpha(t.surfaceOpacity, 1) * globalAlpha);
       const maskA = toAlpha(t.maskOpacity, 0.3);
-      const surface = toRgba(t.surfaceColor, sa); const base = t.baseColor; const muted = toRgba(t.mutedColor, sa);
-      const panelAlt = t.panelAltColor ?? t.surfaceColor;
-      const accentAlt = t.accentAltColor ?? t.accentColor;
-      const secondary = t.secondaryColor ?? t.accentColor;
-      const highlight = t.highlightColor ?? t.accentColor;
-      const line = t.lineColor ?? t.textColor;
-      const panelAltColor = toRgba(panelAlt, sa);
-      const surfaceAlt = toRgba(t.surfaceColor, clamp01(sa + 0.08));
-      const labelDimmed = toRgba(t.mutedColor, 0.55);
+      const alphaOf = (key) => (colorEnabledOf(t, key) ? clamp01(colorAlphaOf(t, key) * globalAlpha) : 0);
+      const col = (key, extra) => toRgba(t[key], clamp01(alphaOf(key) * (extra === undefined ? 1 : extra)));
+      const base = col("baseColor");
+      const surface = toRgba(t.surfaceColor, clamp01(surfaceAlpha * (colorEnabledOf(t, "surfaceColor") ? colorAlphaOf(t, "surfaceColor") : 0)));
+      const muted = col("mutedColor");
+      const panelAltColor = col("panelAltColor");
+      const surfaceAlt = toRgba(t.surfaceColor, clamp01(surfaceAlpha + 0.08));
+      const accent = col("accentColor");
+      const accentAlt = col("accentAltColor");
+      const secondary = col("secondaryColor");
+      const highlight = col("highlightColor");
+      const line = col("lineColor");
+      const border = col("borderColor");
+      const borderAlpha = clamp01(((t.borderOpacity ?? 24) / 100) * (colorEnabledOf(t, "borderColor") ? colorAlphaOf(t, "borderColor") : 0) * globalAlpha);
+      const labelDimmed = col("mutedColor", 0.55);
       const foregroundOnAccent = t.colorScheme === "light" ? "#ffffff" : "#0f1115";
       return {
         "--dsw-alias-bg-base": base, "--dsw-alias-bg-layer-1": surface, "--dsw-alias-bg-layer-2": panelAltColor, "--dsw-alias-bg-layer-3": panelAltColor,
-        "--dsw-alias-bg-overlay": surfaceAlt, "--dsw-alias-bg-module-platform": panelAltColor, "--dsw-alias-bg-multi-select": panelAltColor, "--dsw-alias-bg-skeleton": toRgba(t.textColor, 0.08),
+        "--dsw-alias-bg-overlay": surfaceAlt, "--dsw-alias-bg-module-platform": panelAltColor, "--dsw-alias-bg-multi-select": panelAltColor, "--dsw-alias-bg-skeleton": col("textColor", 0.08),
         "--dsw-alias-bg-mask-1": "rgba(0, 0, 0, " + maskA + ")", "--dsw-alias-bg-mask-2": "rgba(0, 0, 0, " + clamp01(maskA * 0.5) + ")", "--dsw-alias-bg-mask-3": "rgba(0, 0, 0, " + clamp01(maskA * 2) + ")",
         "--dsw-alias-bg-mask-photo": "rgba(0, 0, 0, " + clamp01(maskA * 2.8) + ")", "--dsw-alias-bg-mask-drop": toRgba(t.surfaceColor, 0.7),
-        "--dsw-alias-border-inverted": toRgba(t.textColor, 0.06), "--dsw-alias-border-inverted2": toRgba(t.textColor, 0.08),
-        "--dsw-alias-border-l1": toRgba(line, 0.08), "--dsw-alias-border-l2": toRgba(line, 0.14), "--dsw-alias-border-l2-darkmode-thin": toRgba(line, 0.1), "--dsw-alias-border-l3": toRgba(line, 0.2), "--dsw-alias-border-l4": toRgba(line, 0.28),
-        "--dsw-alias-brand-primary": t.accentColor, "--dsw-alias-brand-primary-invert": base, "--dsw-alias-brand-text": t.accentColor,
-        "--dsw-alias-label-primary": t.textColor, "--dsw-alias-label-primary-dimmed": toRgba(t.textColor, 0.8), "--dsw-alias-label-primary-foreground": foregroundOnAccent,
-        "--dsw-alias-label-secondary": t.mutedColor, "--dsw-alias-label-tertiary": toRgba(t.mutedColor, 0.85), "--dsw-alias-label-caption": toRgba(t.mutedColor, 0.7), "--dsw-alias-label-dimmed": labelDimmed,
-        "--dsw-alias-interactive-bg-hover": toRgba(t.accentColor, 0.12), "--dsw-alias-interactive-bg-hover-accent": toRgba(t.accentColor, 0.2), "--dsw-alias-interactive-bg-hover-solid": panelAltColor,
+        "--dsw-alias-border-inverted": col("textColor", 0.06), "--dsw-alias-border-inverted2": col("textColor", 0.08),
+        "--dsw-alias-border-l1": toRgba(border, clamp01(borderAlpha * 0.35)), "--dsw-alias-border-l2": toRgba(border, clamp01(borderAlpha * 0.6)), "--dsw-alias-border-l2-darkmode-thin": toRgba(border, clamp01(borderAlpha * 0.45)), "--dsw-alias-border-l3": toRgba(border, clamp01(borderAlpha * 0.85)), "--dsw-alias-border-l4": toRgba(border, borderAlpha),
+        "--dsw-alias-brand-primary": accent, "--dsw-alias-brand-primary-invert": base, "--dsw-alias-brand-text": accent,
+        "--dsw-alias-label-primary": col("textColor"), "--dsw-alias-label-primary-dimmed": col("textColor", 0.8), "--dsw-alias-label-primary-foreground": foregroundOnAccent,
+        "--dsw-alias-label-secondary": col("mutedColor"), "--dsw-alias-label-tertiary": col("mutedColor", 0.85), "--dsw-alias-label-caption": col("mutedColor", 0.7), "--dsw-alias-label-dimmed": labelDimmed,
+        "--dsw-alias-interactive-bg-hover": col("accentColor", 0.12), "--dsw-alias-interactive-bg-hover-accent": col("accentColor", 0.2), "--dsw-alias-interactive-bg-hover-solid": panelAltColor,
         "--dsw-alias-interactive-bg-hover-danger": "rgba(236, 19, 19, 0.08)", "--dsw-alias-interactive-bg-active": highlight,
-        "--dsw-alias-button-contrast-fill": t.textColor, "--dsw-alias-button-elevated-fill": surface, "--dsw-alias-button-floating-fill": surface, "--dsw-alias-button-floating-hover": panelAltColor,
-        "--dsw-alias-button-primary-dimmed": toRgba(t.accentColor, 0.5), "--dsw-alias-button-primary-fill": t.accentColor, "--dsw-alias-button-primary-hover": accentAlt,
-        "--dsw-alias-button-info-fill": t.accentColor, "--dsw-alias-button-info-hover": accentAlt,
-        "--dsw-alias-state-business-primary": secondary, "--dsw-alias-state-business-tertiary": toRgba(secondary, 0.16),
-        "--dsw-alias-state-error-primary": t.errorColor, "--dsw-alias-state-error-secondary": toRgba(t.errorColor, 0.75),
-        "--dsw-alias-state-success-primary": t.successColor, "--dsw-alias-state-success-secondary": toRgba(t.successColor, 0.75), "--dsw-alias-state-success-tertiary": toRgba(t.successColor, 0.16),
-        "--dsw-alias-state-warn-primary": t.warnColor, "--dsw-alias-state-warn-secondary": toRgba(t.warnColor, 0.75), "--dsw-alias-state-warn-label": toRgba(t.warnColor, 0.9), "--dsw-alias-state-warn-tertiary": toRgba(t.warnColor, 0.16),
-        "--dsw-alias-link": t.linkColor,
-        "--dsw-alias-markdown-code-block": t.codeBlockColor ?? muted, "--dsw-alias-markdown-code-block-banner": t.codeBannerColor ?? panelAltColor, "--dsw-alias-markdown-inline-code": surface,
-        "--dsw-shadow-lv1": "0 1px 3px " + toRgba(t.shadowColor ?? "#000000", (t.shadowStrength ?? 35) / 100 * 0.18), "--dsw-shadow-lv2": "0 4px 14px " + toRgba(t.shadowColor ?? "#000000", (t.shadowStrength ?? 35) / 100 * 0.24), "--dsw-shadow-lv3": "0 12px 32px " + toRgba(t.shadowColor ?? "#000000", (t.shadowStrength ?? 35) / 100 * 0.32),
+        "--dsw-alias-button-contrast-fill": col("textColor"), "--dsw-alias-button-elevated-fill": surface, "--dsw-alias-button-floating-fill": surface, "--dsw-alias-button-floating-hover": panelAltColor,
+        "--dsw-alias-button-primary-dimmed": col("accentColor", 0.5), "--dsw-alias-button-primary-fill": accent, "--dsw-alias-button-primary-hover": accentAlt,
+        "--dsw-alias-button-info-fill": accent, "--dsw-alias-button-info-hover": accentAlt,
+        "--dsw-alias-state-business-primary": secondary, "--dsw-alias-state-business-tertiary": col("secondaryColor", 0.16),
+        "--dsw-alias-state-error-primary": col("errorColor"), "--dsw-alias-state-error-secondary": col("errorColor", 0.75),
+        "--dsw-alias-state-success-primary": col("successColor"), "--dsw-alias-state-success-secondary": col("successColor", 0.75), "--dsw-alias-state-success-tertiary": col("successColor", 0.16),
+        "--dsw-alias-state-warn-primary": col("warnColor"), "--dsw-alias-state-warn-secondary": col("warnColor", 0.75), "--dsw-alias-state-warn-label": col("warnColor", 0.9), "--dsw-alias-state-warn-tertiary": col("warnColor", 0.16),
+        "--dsw-alias-link": col("linkColor"),
+        "--dsw-alias-markdown-code-block": col("codeBlockColor"), "--dsw-alias-markdown-code-block-banner": col("codeBannerColor"), "--dsw-alias-markdown-inline-code": surface,
+        "--dsw-shadow-lv1": "0 1px 3px " + col("shadowColor", (t.shadowStrength ?? 35) / 100 * 0.18), "--dsw-shadow-lv2": "0 4px 14px " + col("shadowColor", (t.shadowStrength ?? 35) / 100 * 0.24), "--dsw-shadow-lv3": "0 12px 32px " + col("shadowColor", (t.shadowStrength ?? 35) / 100 * 0.32),
         "--dsw-alias-markdown-code-segment-selected": surfaceAlt, "--dsw-alias-markdown-code-segment-unselected": base, "--dsw-alias-markdown-placeholder": panelAltColor, "--dsw-alias-markdown-tag": panelAltColor,
-        "--dsw-alias-scrollbar-bg-l1": toRgba(t.mutedColor, 0.3), "--dsw-alias-scrollbar-bg-l2": toRgba(t.mutedColor, 0.35), "--dsw-alias-scrollbar-hover-l1": toRgba(t.mutedColor, 0.5), "--dsw-alias-scrollbar-hover-l2": toRgba(t.mutedColor, 0.55),
+        "--dsw-alias-scrollbar-bg-l1": col("mutedColor", 0.3), "--dsw-alias-scrollbar-bg-l2": col("mutedColor", 0.35), "--dsw-alias-scrollbar-hover-l1": col("mutedColor", 0.5), "--dsw-alias-scrollbar-hover-l2": col("mutedColor", 0.55),
         "--dsw-alias-toast-bg": panelAltColor, "--dsw-alias-tooltip-bg": panelAltColor,
         "--dsw-specific-bubble": surface, "--dsw-specific-bubble-highlight": surfaceAlt,
         "--dsw-specific-input-major": surface, "--dsw-specific-login-input": surface, "--dsw-specific-menu": panelAltColor, "--dsw-specific-selector": panelAltColor, "--dsw-specific-tip": panelAltColor,
-        "--dsw-specific-sidebar-fill": toRgba(t.baseColor, sa), "--dsw-specific-sidebar-nav-item-active": surface, "--dsw-specific-sidebar-nav-item-active-accent": t.accentColor, "--dsw-specific-sidebar-nav-item-hover": toRgba(t.surfaceColor, clamp01(sa * 0.8)),
+        "--dsw-specific-sidebar-fill": base, "--dsw-specific-sidebar-nav-item-active": surface, "--dsw-specific-sidebar-nav-item-active-accent": accent, "--dsw-specific-sidebar-nav-item-hover": toRgba(t.surfaceColor, clamp01(surfaceAlpha * 0.8)),
       };
     }
 
@@ -328,7 +426,15 @@ window.__ModuleLoader__.load({
       actionRow: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" },
       editor: { display: "flex", flexDirection: "column", gap: "10px", paddingTop: "4px" },
       editorGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", paddingTop: "4px" },
-      previewRow: { display: "flex", flexWrap: "wrap", gap: "12px", paddingTop: "4px" },
+      colorItem: { display: "flex", flexDirection: "column", gap: "6px", padding: "6px 8px", borderRadius: "8px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)" },
+      colorHead: { display: "flex", alignItems: "center", gap: "6px" },
+      arrowButton: { width: "22px", height: "22px", padding: "0", border: "0", background: "transparent", color: "var(--dsw-alias-label-secondary)", cursor: "pointer", fontSize: "12px", lineHeight: "22px", borderRadius: "5px" },
+      colorBody: { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" },
+      colorSwatch: { width: "34px", height: "26px", padding: "0", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "6px", cursor: "pointer" },
+      pickerPop: { position: "relative", zIndex: 2, width: "100%", marginTop: "8px", padding: "10px", borderRadius: "10px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-3)", boxShadow: "0 12px 32px rgba(0,0,0,0.35)" },
+      pickerSquare: { position: "relative", width: "100%", height: "140px", borderRadius: "6px", cursor: "crosshair", touchAction: "none" },
+      pickerHue: { height: "14px", marginTop: "8px", borderRadius: "7px", cursor: "pointer", touchAction: "none", background: "linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)" },
+      pickerAlpha: { height: "14px", marginTop: "8px", borderRadius: "7px", cursor: "pointer", touchAction: "none" },
       check: { position: "absolute", top: "3px", right: "3px", width: "16px", height: "16px", borderRadius: "50%", background: "#3b82f6", color: "#ffffff", fontSize: "11px", lineHeight: "16px", textAlign: "center" },
     };
 
@@ -369,96 +475,54 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function PreviewBar({ w, h, bg, r }) { return React.createElement("div", { style: { width: w, height: h, borderRadius: r ?? 4, background: bg } }); }
-    function ThemePreview({ draft, scene }) {
-      const sa = toAlpha(draft.surfaceOpacity, 1);
-      const bgOp = toAlpha(draft.backgroundOpacity, DEFAULT_BG_OPACITY);
-      const maskA = toAlpha(draft.maskOpacity, 0.3);
-      const hasBg = !!draft.background;
-      const text = draft.textColor; const muted = draft.mutedColor; const accent = draft.accentColor;
-      const accentAlt = draft.accentAltColor ?? draft.accentColor;
-      const secondary = draft.secondaryColor ?? draft.accentColor;
-      const highlight = draft.highlightColor ?? draft.accentColor;
-      const panelAlt = draft.panelAltColor ?? draft.surfaceColor;
-      const line = draft.lineColor ?? draft.textColor;
-      const border = toRgba(line, 0.18);
-      const mainBg = hasBg ? toRgba(draft.baseColor, bgOp) : draft.baseColor;
-      const sidebarFill = hasBg ? toRgba(draft.baseColor, Math.min(1, bgOp + 0.1)) : toRgba(draft.baseColor, sa);
-      const surface = toRgba(draft.surfaceColor, sa);
-      const box = { border: "1px solid " + border };
-      const transform = "translate(" + (draft.backgroundX ?? 0) + "px, " + (draft.backgroundY ?? 0) + "px) scale(" + (draft.backgroundZoom ?? 1) + ")";
-      const filter = (draft.backgroundBlur ?? 0) > 0 ? "blur(" + draft.backgroundBlur + "px)" : "none";
-      const shell = { width: "320px", height: "190px", borderRadius: "10px", overflow: "hidden", display: "flex", position: "relative", boxShadow: "0 0 0 1px " + border, flexShrink: 0, background: draft.baseColor };
-      const wash = React.createElement("div", { style: { position: "absolute", inset: "0", background: mainBg } });
-      const maskLayer = scene === "settings" ? React.createElement("div", { style: { position: "absolute", inset: "0", background: "rgba(0, 0, 0, " + maskA + ")", backdropFilter: "blur(2px)" } }) : null;
-      const bgImage = hasBg ? React.createElement("div", { style: { position: "absolute", inset: "0", backgroundImage: "url(\"" + draft.background + "\")", backgroundSize: "contain", backgroundPosition: "center", backgroundRepeat: "no-repeat", transform: transform, transformOrigin: "center", filter: filter } }) : null;
-      const sidebar = React.createElement("div", { style: { width: "56px", background: sidebarFill, display: "flex", flexDirection: "column", gap: "8px", padding: "10px 8px", position: "relative", zIndex: 1 } },
-        scene === "chat" ? React.createElement(PreviewBar, { w: "40px", h: "8px", bg: accent, r: 4 }) : null,
-        React.createElement("div", { style: { width: "40px", height: "18px", borderRadius: "5px", background: highlight } }),
-        React.createElement(PreviewBar, { w: "36px", h: "6px", bg: muted, r: 3 }),
-        React.createElement(PreviewBar, { w: "36px", h: "6px", bg: muted, r: 3 }),
-        React.createElement(PreviewBar, { w: "36px", h: "6px", bg: muted, r: 3 }),
-      );
-      let main = null;
-      if (scene === "settings") {
-        main = React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "14px", position: "relative", zIndex: 1 } },
-          React.createElement("div", { style: Object.assign({ width: "100%", padding: "10px", borderRadius: "8px", background: surface, display: "flex", flexDirection: "column", gap: "8px" }, box) },
-            React.createElement(PreviewBar, { w: "90px", h: "8px", bg: text, r: 4 }),
-            React.createElement("div", { style: { display: "flex", gap: "8px" } },
-              React.createElement(PreviewBar, { w: "50%", h: "6px", bg: muted, r: 3 }),
-              React.createElement("div", { style: { width: "18px", height: "18px", borderRadius: "5px", background: highlight, marginLeft: "auto" } }),
-            ),
-            React.createElement("div", { style: Object.assign({ height: "16px", borderRadius: "5px", background: toRgba(draft.surfaceColor, sa), border: "1px solid " + border, display: "flex", alignItems: "center", padding: "0 6px" }, box) },
-              React.createElement(PreviewBar, { w: "50%", h: "4px", bg: muted, r: 2 }),
-            ),
-            React.createElement("div", { style: { display: "flex", gap: "6px" } },
-              React.createElement("div", { style: { flex: 1, height: "22px", borderRadius: "6px", background: accent, display: "flex", alignItems: "center", justifyContent: "center" } },
-                React.createElement(PreviewBar, { w: "40%", h: "5px", bg: text, r: 2 }),
-              ),
-              React.createElement("div", { style: { flex: 1, height: "22px", borderRadius: "6px", background: accentAlt, display: "flex", alignItems: "center", justifyContent: "center" } },
-                React.createElement(PreviewBar, { w: "40%", h: "5px", bg: text, r: 2 }),
-              ),
-            ),
-          ),
-        );
-      } else {
-        main = React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", padding: "12px", position: "relative", zIndex: 1 } },
-          React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", gap: "8px" } },
-            React.createElement("div", { style: Object.assign({ alignSelf: "flex-start", width: "100%", padding: "8px 10px", borderRadius: "10px", background: surface }, box) },
-              React.createElement(PreviewBar, { w: "90%", h: "6px", bg: text, r: 3 }),
-              React.createElement("div", { style: { height: "6px" } }),
-              React.createElement(PreviewBar, { w: "60%", h: "6px", bg: muted, r: 3 }),
-              React.createElement("div", { style: { height: "16px", borderRadius: "5px", background: toRgba(panelAlt, sa), display: "flex", alignItems: "center", padding: "0 6px", marginTop: "6px" } },
-                React.createElement(PreviewBar, { w: "50%", h: "4px", bg: accent, r: 2 }),
-              ),
-            ),
-            React.createElement("div", { style: Object.assign({ alignSelf: "flex-start", width: "82%", padding: "8px 10px", borderRadius: "10px", background: surface }, box) },
-              React.createElement(PreviewBar, { w: "78%", h: "6px", bg: text, r: 3 }),
-              React.createElement("div", { style: { alignSelf: "flex-start", height: "14px", borderRadius: "7px", background: secondary, padding: "0 8px", display: "flex", alignItems: "center", marginTop: "6px" } },
-                React.createElement(PreviewBar, { w: "24px", h: "4px", bg: text, r: 2 }),
-              ),
-            ),
-            React.createElement("div", { style: Object.assign({ alignSelf: "flex-start", width: "70%", padding: "8px 10px", borderRadius: "10px", background: surface }, box) },
-              React.createElement(PreviewBar, { w: "85%", h: "6px", bg: text, r: 3 }),
-            ),
-          ),
-          React.createElement("div", { style: Object.assign({ height: "28px", marginTop: "10px", borderRadius: "8px", background: surface, display: "flex", alignItems: "center", padding: "0 8px", gap: "6px" }, box) },
-            React.createElement(PreviewBar, { w: "80px", h: "5px", bg: muted, r: 2 }),
-            React.createElement("div", { style: { width: "20px", height: "20px", borderRadius: "6px", background: accentAlt, marginLeft: "auto" } }),
-          ),
-        );
-      }
-      return React.createElement("div", { style: shell },
-        bgImage,
-        wash,
-        maskLayer,
-        scene === "chat" ? sidebar : null,
-        main,
+    function hexToRgb(hex) { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "")); if (m === null) return { r: 0, g: 0, b: 0 }; const n = parseInt(m[1], 16); return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }; }
+    function rgbToHex(r, g, b) { const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0"); return "#" + c(r) + c(g) + c(b); }
+    function rgbToHsv(r, g, b) { r /= 255; g /= 255; b /= 255; const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min; let h = 0; if (d !== 0) { if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4; h *= 60; if (h < 0) h += 360; } return { h, s: max === 0 ? 0 : d / max, v: max }; }
+    function hsvToRgb(h, s, v) { const c = v * s; const x = c * (1 - Math.abs(((h / 60) % 2) - 1)); const m = v - c; let r = 0, g = 0, b = 0; if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; } else if (h < 180) { g = c; b = x; } else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; } return { r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 }; }
+
+    function ColorPicker({ value, alpha, onChange, onClose }) {
+      const initial = hexToRgb(value); const start = rgbToHsv(initial.r, initial.g, initial.b);
+      const [h, setH] = React.useState(start.h); const [s, setS] = React.useState(start.s); const [v, setV] = React.useState(start.v); const [a, setA] = React.useState(alpha);
+      React.useEffect(() => { const rgb = hexToRgb(value); const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b); setH(hsv.h); setS(hsv.s); setV(hsv.v); }, [value]);
+      React.useEffect(() => { setA(alpha); }, [alpha]);
+      const squareRef = React.useRef(null); const hueRef = React.useRef(null); const alphaRef = React.useRef(null);
+      const emit = (nh, ns, nv, na) => { const rgb = hsvToRgb(nh, ns, nv); onChange(rgbToHex(rgb.r, rgb.g, rgb.b), na); };
+      const point = (event, el) => { const rect = el.getBoundingClientRect(); return { x: clamp01((event.clientX - rect.left) / rect.width), y: clamp01((event.clientY - rect.top) / rect.height) }; };
+      const onSquare = (event) => { if (squareRef.current === null) return; const p = point(event, squareRef.current); const ns = p.x; const nv = 1 - p.y; setS(ns); setV(nv); emit(h, ns, nv, a); };
+      const onHue = (event) => { if (hueRef.current === null) return; const nh = point(event, hueRef.current).x * 360; setH(nh); emit(nh, s, v, a); };
+      const onAlpha = (event) => { if (alphaRef.current === null) return; const na = point(event, alphaRef.current).x; setA(na); emit(h, s, v, na); };
+      const popStyle = S.pickerPop;
+      return React.createElement("div", { style: popStyle },
+        React.createElement("div", { ref: squareRef, style: Object.assign({}, S.pickerSquare, { background: "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent), hsl(" + h + ", 100%, 50%)" }), onPointerDown: (event) => { event.currentTarget.setPointerCapture(event.pointerId); onSquare(event); }, onPointerMove: (event) => { if (event.buttons === 1) onSquare(event); } }),
+        React.createElement("div", { ref: hueRef, style: S.pickerHue, onPointerDown: (event) => { event.currentTarget.setPointerCapture(event.pointerId); onHue(event); }, onPointerMove: (event) => { if (event.buttons === 1) onHue(event); } }),
+        React.createElement("div", { ref: alphaRef, style: Object.assign({}, S.pickerAlpha, { background: "linear-gradient(to right, transparent, " + value + "), repeating-conic-gradient(#808080 0 25%, #fff 0 50%) 0 0 / 8px 8px" }), onPointerDown: (event) => { event.currentTarget.setPointerCapture(event.pointerId); onAlpha(event); }, onPointerMove: (event) => { if (event.buttons === 1) onAlpha(event); } }),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "6px", marginTop: "8px" } },
+          React.createElement("input", { type: "text", style: S.input, value: value, onChange: (event) => { const raw = event.target.value; if (/^#?[0-9a-f]{6}$/i.test(raw)) onChange(raw.startsWith("#") ? raw : "#" + raw, a); } }),
+          React.createElement("span", { style: S.sliderValue }, Math.round(a * 100) + "%"),
+          React.createElement("button", { type: "button", style: S.button, onClick: onClose }, "OK"),
+        ),
       );
     }
 
-    // No compression (spec Q7-B): read the picked file's raw bytes as base64
-    // and hand them to the host file store.
+    function ColorControl({ label, colorKey, draft, onPatchFields, onReset }) {
+      const [open, setOpen] = React.useState(false); const [picker, setPicker] = React.useState(false); const swatchRef = React.useRef(null);
+      const value = draft[colorKey] ?? "#000000"; const enabled = colorEnabledOf(draft, colorKey); const alpha = colorAlphaOf(draft, colorKey);
+      const setColor = (hex, na) => onPatchFields({ [colorKey]: hex, colorAlpha: Object.assign({}, draft.colorAlpha, { [colorKey]: na }), colorEnabled: Object.assign({}, draft.colorEnabled, { [colorKey]: true }) });
+      return React.createElement("div", { style: S.colorItem },
+        React.createElement("div", { style: S.colorHead },
+          React.createElement("span", { style: S.fieldLabel }, label),
+          React.createElement("button", { type: "button", style: S.arrowButton, onClick: () => setOpen(!open), "aria-expanded": open }, open ? "▾" : "▸"),
+          React.createElement("input", { type: "checkbox", checked: enabled, style: { marginLeft: "auto", accentColor: "var(--dsw-alias-brand-primary)" }, onChange: (event) => onPatchFields({ colorEnabled: Object.assign({}, draft.colorEnabled, { [colorKey]: event.target.checked }) }) }),
+        ),
+        open ? React.createElement("div", { style: S.colorBody },
+          React.createElement("button", { ref: swatchRef, type: "button", style: Object.assign({}, S.colorSwatch, { background: enabled ? toRgba(value, alpha) : "rgba(0,0,0,0)" }), onClick: () => setPicker(true) }),
+          React.createElement(Slider, { label: "透明度", value: Math.round(alpha * 100), min: 0, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => onPatchFields({ colorAlpha: Object.assign({}, draft.colorAlpha, { [colorKey]: v / 100 }) }) }),
+          React.createElement("button", { type: "button", style: S.button, onClick: () => onReset(colorKey) }, "重置"),
+          picker ? React.createElement(ColorPicker, { value, alpha, onChange: setColor, onClose: () => setPicker(false) }) : null,
+        ) : null,
+      );
+    }
+
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -554,6 +618,9 @@ window.__ModuleLoader__.load({
       theme.id = pkg.id;
       theme.packageId = pkg.id;
       theme.name = (overrides && overrides.theme && overrides.theme.name) || pkg.name || theme.name;
+      theme.colorAlpha = Object.assign({}, DEFAULT_COLOR_ALPHA, theme.colorAlpha || {});
+      theme.colorEnabled = Object.assign({}, DEFAULT_COLOR_ENABLED, theme.colorEnabled || {});
+      theme.partOpacity = Object.assign({}, DEFAULT_PART_OPACITY, theme.partOpacity || {});
       theme.css = mapDreamSkinCss(cssText, theme);
       return theme;
     }
@@ -681,8 +748,19 @@ window.__ModuleLoader__.load({
       if (matched === 0) out.push('body{font-family:' + (draft.fontFamily || 'inherit') + '}');
       const applyExtra = !draft.packageId || draft.hasOverrides === true;
       if (applyExtra) {
+        const borderPaint = toRgba(draft.borderColor ?? draft.lineColor ?? draft.textColor, clamp01((draft.borderOpacity ?? 24) / 100));
+        const part = (key, dflt) => (draft.partOpacity && typeof draft.partOpacity[key] === "number") ? draft.partOpacity[key] : (dflt === undefined ? 100 : dflt);
+        out.push('[data-slot="conversation.composer"],[data-composer-card],[data-composer-seat],[role="dialog"],[role="menu"]{border:' + (draft.borderWidth ?? 1) + 'px ' + (draft.borderStyle ?? 'solid') + ' ' + borderPaint + ' !important}');
+        out.push('[data-slot="conversation.composer"],[data-composer-card],[data-composer-seat]{background-color:color-mix(in srgb, var(--ds-theme-color-panel) ' + part("composer") + '%, transparent) !important}');
+        out.push('[role="dialog"],[role="menu"]{background-color:color-mix(in srgb, var(--ds-theme-color-panel-alt) ' + part("dialog") + '%, transparent) !important}');
+        out.push('[data-slot="sidebar"],[data-pane="sidebar"]{background-color:color-mix(in srgb, var(--ds-theme-color-background) ' + part("sidebar") + '%, transparent) !important}');
+        out.push('[data-chat-flow-kind],[data-message-author-role]{background-color:color-mix(in srgb, var(--ds-theme-color-panel) ' + part("message") + '%, transparent) !important}');
+        out.push('[data-chat-flow-kind]:has([data-disclosure-row]),[data-chat-flow-kind]:has([data-turn-process]),[data-slot="main.conversation"] [class*="callRow"],[data-slot="main.conversation"] [class*="toolRow"],[data-disclosure-row],[data-turn-process]{background-color:color-mix(in srgb, var(--ds-theme-color-panel) ' + part("tool") + '%, transparent) !important;background-image:none !important;box-shadow:none !important}');
+        out.push('[data-slot="rightbar"]{background-color:color-mix(in srgb, var(--ds-theme-color-panel) ' + part("panel") + '%, transparent) !important}');
         out.push('[data-slot="conversation.composer"],[data-composer-card],[data-composer-seat],[role="dialog"],[role="menu"],[data-slot="sidebar"]{border-radius:var(--ds-theme-surface-radius,12px)}');
-        out.push('[data-slot="conversation.composer"],[data-composer-card],[data-composer-seat],[role="dialog"],[role="menu"],[data-slot="sidebar"]{backdrop-filter:blur(var(--ds-theme-surface-blur,12px))}');
+        const blurParts = '[data-slot="conversation.composer"],[data-composer-card],[data-composer-seat],[role="dialog"],[role="menu"],[data-slot="sidebar"],[data-pane="sidebar"],[data-slot="main"],[data-slot="main.conversation"],[data-slot="conversation.session"],header,[data-chat-flow-kind]';
+        if ((draft.surfaceBlur ?? 12) <= 0) out.push(blurParts + '{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}');
+        else out.push(blurParts + '{backdrop-filter:blur(var(--ds-theme-surface-blur,12px));-webkit-backdrop-filter:blur(var(--ds-theme-surface-blur,12px))}');
         out.push('body{--ds-transition-duration:calc(var(--ds-theme-motion-level,1) * 0.2s);--ds-transition-duration-fast:calc(var(--ds-theme-motion-level,1) * 0.1s);--ds-transition-duration-slow:calc(var(--ds-theme-motion-level,1) * 0.3s)}');
       }
       return out.join('\n') + '\ninput, textarea, [contenteditable] { letter-spacing: normal; }';
@@ -716,6 +794,14 @@ window.__ModuleLoader__.load({
         highlightColor: c.highlight || c.accent || '#ffffff',
         lineColor: hexFromColor(c.line) || c.text || '#ffffff',
         fontFamily: root ? cssProp(root, 'font-family:') : null,
+        borderColor: hexFromColor(c.line) || c.text || '#ffffff',
+        borderWidth: 1,
+        borderStyle: "solid",
+        borderOpacity: 24,
+        themeOpacity: 100,
+        panelOpacity: 100,
+        composerOpacity: 100,
+        dialogOpacity: 100,
         radius: 12,
         surfaceBlur: 12,
         density: 1,
@@ -755,6 +841,12 @@ window.__ModuleLoader__.load({
       const [storagePath, setStoragePath] = React.useState(null);
       const [contractReady, setContractReady] = React.useState(getContract() !== null);
       const bgInputRef = React.useRef(null);
+      const dirtyRef = React.useRef(false);
+      const [styleClip, setStyleClip] = React.useState(readStyleSnapshot);
+      const [stylePresets, setStylePresets] = React.useState(readStylePresets);
+      const [styleNote, setStyleNote] = React.useState(null);
+      const [presetName, setPresetName] = React.useState(null);
+      const noteTimer = React.useRef(null);
 
       // Q6-A: uploads stay disabled until the wallpaper contract is fetched
       // (the client mirrors nothing, so it cannot act before the contract).
@@ -800,11 +892,11 @@ window.__ModuleLoader__.load({
         if (editing !== null) {
           cleanupUnsavedBackground(editing.draft);
           if (id === DEFAULT_SKIN) { setEditing(null); }
-          else { const index = themes.findIndex((x) => x.id === id); if (index >= 0) setEditing({ mode: "edit", index, draft: Object.assign({}, themes[index]) }); }
+          else { const index = themes.findIndex((x) => x.id === id); if (index >= 0) { dirtyRef.current = false; setEditing({ mode: "edit", index, baseline: Object.assign({}, themes[index]), draft: Object.assign({}, themes[index]) }); } }
         }
       };
       const refreshThemes = () => setThemes(props.loadThemes());
-      const startNew = () => { if (editing !== null) cleanupUnsavedBackground(editing.draft); setEditing({ mode: "new", index: -1, draft: newCustomTheme() }); };
+      const startNew = () => { if (editing !== null) cleanupUnsavedBackground(editing.draft); const fresh = newCustomTheme(); dirtyRef.current = false; setEditing({ mode: "new", index: -1, baseline: Object.assign({}, fresh), draft: fresh }); };
       const zipRef = React.useRef(null);
       const onZipFile = async (event) => {
         const file = event.target.files?.[0];
@@ -878,15 +970,61 @@ window.__ModuleLoader__.load({
         if (pkg.format === "dsh-v2") { beginCssEdit(pkg); return; }
         const theme = themes.find((entry) => entry.packageId === pkg.id);
         selectPackage(pkg);
-        if (theme) setEditing({ mode: "edit", index: -1, draft: Object.assign({}, theme) });
+        if (theme) { dirtyRef.current = false; setEditing({ mode: "edit", index: -1, baseline: Object.assign({}, theme), draft: Object.assign({}, theme) }); }
       };
       const startEditSelected = () => {
         if (pref === "system" || pref === "light" || pref === "dark") return;
         if (editing !== null) cleanupUnsavedBackground(editing.draft);
         const index = themes.findIndex((x) => x.id === pref);
-        if (index >= 0) { setEditing({ mode: "edit", index, draft: Object.assign({}, themes[index]) }); }
+        if (index >= 0) { dirtyRef.current = false; setEditing({ mode: "edit", index, baseline: Object.assign({}, themes[index]), draft: Object.assign({}, themes[index]) }); }
       };
-      const patch = (field, value) => setEditing((e) => e === null ? e : { mode: e.mode, index: e.index, draft: Object.assign({}, e.draft, { [field]: value }) });
+      const patchFields = (fields) => setEditing((e) => {
+        if (e === null) return e;
+        dirtyRef.current = true;
+        return { mode: e.mode, index: e.index, baseline: e.baseline, draft: Object.assign({}, e.draft, fields) };
+      });
+      const patch = (field, value) => patchFields({ [field]: value });
+      const flash = (text) => { setStyleNote(text); if (noteTimer.current !== null) clearTimeout(noteTimer.current); noteTimer.current = setTimeout(() => setStyleNote(null), 2000); };
+      const copyStyle = () => { const snap = styleSnapshotOf(editing === null ? {} : editing.draft); writeStorage(STORAGE_STYLE_CLIP, JSON.stringify(snap)); setStyleClip(snap); flash(t("ji-theme.style.copied")); };
+      const pasteStyle = () => { const fields = stylePatchOf(styleClip); if (fields === null) return; patchFields(fields); flash(t("ji-theme.style.applied")); };
+      // window.prompt is blocked in the DSH web surface, so the name is typed
+      // inline: the button reveals the field, Enter commits, Escape cancels.
+      const beginSavePreset = () => { if (editing === null) return; setPresetName(editing.draft.name || t("ji-theme.style.defaultName")); };
+      const commitSavePreset = () => {
+        if (editing === null || presetName === null) return;
+        const name = presetName.trim() === "" ? t("ji-theme.style.defaultName") : presetName.trim();
+        const snap = Object.assign(styleSnapshotOf(editing.draft), { name: name });
+        const list = readStylePresets();
+        const index = list.findIndex((x) => x.name === name);
+        if (index >= 0) list[index] = snap; else list.push(snap);
+        writeStylePresets(list);
+        setStylePresets(list);
+        setPresetName(null);
+        flash(t("ji-theme.style.saved"));
+      };
+      const applyStylePreset = (snap) => { const fields = stylePatchOf(snap); if (fields === null) return; patchFields(fields); flash(t("ji-theme.style.applied")); };
+      const removeStylePreset = (name) => { const list = readStylePresets().filter((x) => x.name !== name); writeStylePresets(list); setStylePresets(list); };
+      const resetColor = (key) => {
+        if (editing === null || editing.baseline === undefined) return;
+        const base = editing.baseline;
+        patchFields({ [key]: base[key], colorAlpha: Object.assign({}, editing.draft.colorAlpha, { [key]: (base.colorAlpha && base.colorAlpha[key]) ?? 1 }), colorEnabled: Object.assign({}, editing.draft.colorEnabled, { [key]: (base.colorEnabled && base.colorEnabled[key]) !== false }) });
+      };
+      const resetTheme = () => {
+        if (editing === null) return;
+        if (editing.draft.packageId) {
+          props.resetPackageOverrides(editing.draft.packageId).then(() => { setEditing(null); refreshThemes(); }).catch((err) => setActionError(err && err.message ? err.message : String(err)));
+          return;
+        }
+        dirtyRef.current = true;
+        setEditing({ mode: editing.mode, index: editing.index, baseline: editing.baseline, draft: Object.assign({}, editing.baseline) });
+      };
+      React.useEffect(() => {
+        if (editing === null || editing.draft === undefined || dirtyRef.current !== true) return;
+        const draft = editing.draft;
+        props.applyDraft(draft);
+        const timer = setTimeout(() => { props.commitDraft(draft).catch((err) => setActionError(err && err.message ? err.message : String(err))); }, 300);
+        return () => clearTimeout(timer);
+      }, [editing]);
       // The draft may carry a file URL that was uploaded but never saved (e.g.
       // the user picked an image then cancelled). Only that unsaved URL is
       // garbage: a saved theme's background must stay until saveTheme replaces
@@ -993,27 +1131,7 @@ window.__ModuleLoader__.load({
             React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.name")), React.createElement("input", { type: "text", style: S.input, value: draft.name, placeholder: "My theme", onChange: (event) => patch("name", event.target.value) })),
             React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.scheme")), React.createElement("button", { type: "button", style: S.button, onClick: () => patch("colorScheme", draft.colorScheme === "light" ? "dark" : "light") }, draft.colorScheme === "light" ? t("ji-theme.editor.light") : t("ji-theme.editor.dark"))),
             React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.fontFamily")), React.createElement("input", { type: "text", style: S.input, value: draft.fontFamily ?? "", placeholder: "ui-rounded, system-ui", onChange: (event) => patch("fontFamily", event.target.value) })),
-            React.createElement(ColorField, { label: t("ji-theme.editor.baseColor"), value: draft.baseColor, onChange: (v) => patch("baseColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.surfaceColor"), value: draft.surfaceColor, onChange: (v) => patch("surfaceColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.textColor"), value: draft.textColor, onChange: (v) => patch("textColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.mutedColor"), value: draft.mutedColor, onChange: (v) => patch("mutedColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.accentColor"), value: draft.accentColor, onChange: (v) => patch("accentColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.panelAlt"), value: draft.panelAltColor, onChange: (v) => patch("panelAltColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.accentAlt"), value: draft.accentAltColor, onChange: (v) => patch("accentAltColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.secondary"), value: draft.secondaryColor, onChange: (v) => patch("secondaryColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.highlight"), value: draft.highlightColor, onChange: (v) => patch("highlightColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.line"), value: draft.lineColor, onChange: (v) => patch("lineColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.errorColor"), value: draft.errorColor, onChange: (v) => patch("errorColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.successColor"), value: draft.successColor, onChange: (v) => patch("successColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.warnColor"), value: draft.warnColor, onChange: (v) => patch("warnColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.linkColor"), value: draft.linkColor, onChange: (v) => patch("linkColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.codeBlockColor"), value: draft.codeBlockColor, onChange: (v) => patch("codeBlockColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.codeBannerColor"), value: draft.codeBannerColor, onChange: (v) => patch("codeBannerColor", v) }),
-            React.createElement(ColorField, { label: t("ji-theme.editor.shadowColor"), value: draft.shadowColor, onChange: (v) => patch("shadowColor", v) }),
-          ),
-          React.createElement("div", { style: S.previewRow },
-            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } }, React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.chat")), React.createElement(ThemePreview, { draft: draft, scene: "chat" })),
-            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } }, React.createElement("div", { style: S.fieldLabel }, t("ji-theme.preview.settings")), React.createElement(ThemePreview, { draft: draft, scene: "settings" })),
+            COLOR_KEYS.map((key) => React.createElement(ColorControl, { key, colorKey: key, label: t("ji-theme.editor." + COLOR_LABELS[key]), draft, onPatchFields: patchFields, onReset: resetColor })),
           ),
           React.createElement("div", { style: S.editorGrid },
             React.createElement(Slider, { label: t("ji-theme.editor.surfaceOpacity"), value: Math.round((draft.surfaceOpacity ?? 1) * 100), min: 1, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("surfaceOpacity", v / 100) }),
@@ -1024,15 +1142,43 @@ window.__ModuleLoader__.load({
             React.createElement(Slider, { label: t("ji-theme.editor.shadowStrength"), value: Math.round(Number(draft.shadowStrength ?? 35)), min: 0, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("shadowStrength", v) }),
             React.createElement(Slider, { label: t("ji-theme.editor.density"), value: Number(draft.density ?? 1), min: 0.8, max: 1.4, step: 0.05, format: (v) => Number(v).toFixed(2) + "x", onChange: (v) => patch("density", v) }),
             React.createElement(Slider, { label: t("ji-theme.editor.motion"), value: Number(draft.motion ?? 1), min: 0, max: 1, step: 0.05, format: (v) => Math.round(Number(v) * 100) + "%", onChange: (v) => patch("motion", v) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.borderWidth"), value: Number(draft.borderWidth ?? 1), min: 0, max: 6, step: 1, format: (v) => v + "px", onChange: (v) => patch("borderWidth", v) }),
+            React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.borderStyle")), React.createElement("button", { type: "button", style: S.button, onClick: () => { const styles = ["solid", "dashed", "dotted", "none"]; const current = draft.borderStyle ?? "solid"; patch("borderStyle", styles[(styles.indexOf(current) + 1) % styles.length]); } }, draft.borderStyle ?? "solid")),
+            React.createElement(Slider, { label: t("ji-theme.editor.borderOpacity"), value: Math.round(Number(draft.borderOpacity ?? 24)), min: 0, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("borderOpacity", v) }),
+            React.createElement(Slider, { label: t("ji-theme.editor.themeOpacity"), value: Math.round(Number(draft.themeOpacity ?? 100)), min: 0, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patch("themeOpacity", v) }),
+            PART_KEYS.map((key) => React.createElement(Slider, { key, label: t("ji-theme.editor.part." + key), value: Math.round((draft.partOpacity && draft.partOpacity[key]) ?? 100), min: 0, max: 100, step: 1, format: (v) => v + "%", onChange: (v) => patchFields({ partOpacity: Object.assign({}, draft.partOpacity, { [key]: v }) }) })),
             React.createElement("div", { style: S.fieldRow }, React.createElement("span", { style: S.fieldLabel }, t("ji-theme.editor.background")), React.createElement("button", { type: "button", disabled: !contractReady, style: Object.assign({}, S.button, contractReady ? {} : { opacity: 0.5, cursor: "not-allowed" }), onClick: () => { if (contractReady) bgInputRef.current?.click(); } }, t("ji-theme.editor.chooseImage")), draft.background ? React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: () => { cleanupUnsavedBackground(draft); patch("background", null); } }, t("ji-theme.editor.removeImage")) : null, React.createElement("input", { ref: bgInputRef, type: "file", accept: "image/*", style: { display: "none" }, onChange: onBgFile })),
             draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.zoom"), value: Math.round((draft.backgroundZoom ?? 1) * 100), min: 100, max: 300, step: 1, format: (v) => v + "%", onChange: (v) => patch("backgroundZoom", v / 100) }) : null,
             draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.x"), value: Math.round(draft.backgroundX ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundX", v) }) : null,
             draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.y"), value: Math.round(draft.backgroundY ?? 0), min: -150, max: 150, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundY", v) }) : null,
             draft.background ? React.createElement(Slider, { label: t("ji-theme.editor.blur"), value: Math.round(draft.backgroundBlur ?? 0), min: 0, max: 60, step: 1, format: (v) => v + "px", onChange: (v) => patch("backgroundBlur", v) }) : null,
           ),
+          React.createElement("div", { style: S.group },
+            React.createElement("div", { style: S.title }, t("ji-theme.style.title")),
+            React.createElement("div", { style: S.actionRow },
+              React.createElement("button", { type: "button", style: S.button, onClick: copyStyle }, t("ji-theme.style.copy")),
+              React.createElement("button", { type: "button", disabled: styleClip === null, style: styleClip === null ? Object.assign({}, S.button, { opacity: 0.5, cursor: "not-allowed" }) : S.button, onClick: pasteStyle }, t("ji-theme.style.paste")),
+              React.createElement("button", { type: "button", style: S.button, onClick: beginSavePreset }, t("ji-theme.style.save")),
+              styleNote === null ? null : React.createElement("span", { style: { color: "var(--dsw-alias-label-tertiary)", fontSize: "12px" } }, styleNote),
+            ),
+            presetName === null ? null : React.createElement("div", { style: S.actionRow },
+              React.createElement("input", { type: "text", autoFocus: true, style: S.input, value: presetName, placeholder: t("ji-theme.style.promptName"), onChange: (event) => setPresetName(event.target.value), onKeyDown: (event) => { if (event.key === "Enter") commitSavePreset(); else if (event.key === "Escape") setPresetName(null); } }),
+              React.createElement("button", { type: "button", style: S.button, onClick: commitSavePreset }, t("ji-theme.style.confirm")),
+              React.createElement("button", { type: "button", style: S.button, onClick: () => setPresetName(null) }, t("ji-theme.editor.cancel")),
+            ),
+            stylePresets.length === 0
+              ? React.createElement("div", { style: { color: "var(--dsw-alias-label-tertiary)", fontSize: "12px" } }, t("ji-theme.style.presetsEmpty"))
+              : React.createElement("div", { style: S.actionRow },
+              stylePresets.map((snap, index) => React.createElement("div", { key: "preset-" + index + "-" + snap.name, style: S.fieldRow },
+                React.createElement("span", { style: Object.assign({}, S.fieldLabel, { width: "auto" }) }, snap.name || t("ji-theme.style.defaultName")),
+                React.createElement("button", { type: "button", style: S.button, onClick: () => applyStylePreset(snap) }, t("ji-theme.style.apply")),
+                React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: () => removeStylePreset(snap.name) }, t("ji-theme.style.remove")),
+              )),
+            ),
+          ),
           React.createElement("div", { style: S.actionRow },
-            React.createElement("button", { type: "button", style: S.button, onClick: save }, t("ji-theme.editor.save")),
-            React.createElement("button", { type: "button", style: S.button, onClick: discardDraft }, t("ji-theme.editor.cancel")),
+            React.createElement("button", { type: "button", style: S.button, onClick: () => setEditing(null) }, t("ji-theme.editor.done")),
+            React.createElement("button", { type: "button", style: S.button, onClick: resetTheme }, t("ji-theme.editor.resetTheme")),
             React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: remove }, draft.packageId ? t("ji-theme.cssReset") : t("ji-theme.editor.delete")),
           ),
         ),
@@ -1203,6 +1349,7 @@ window.__ModuleLoader__.load({
         if (document.documentElement.dataset.dshSkin) delete document.documentElement.dataset.dshSkin;
       };
       ctx.effect(() => () => cleanupPackage(), "ji-theme: package cleanup");
+
 
       const installPackageStyle = (label, css) => {
         const el = document.createElement("style");
@@ -1384,6 +1531,29 @@ window.__ModuleLoader__.load({
       const bootReassert = setTimeout(reassertSavedSkin, 500);
       ctx.effect(() => () => clearTimeout(bootReassert), "ji-theme: boot reassert timer");
 
+      const applyDraft = (theme) => {
+        if (theme.packageId) {
+          const list = packagesState.themes;
+          const index = list.findIndex((entry) => entry.id === theme.packageId);
+          if (index >= 0) list[index] = normalizeTheme(Object.assign({}, theme, { id: theme.packageId, packageId: theme.packageId, hasOverrides: true }));
+          registerThemes(); applyBackground(); applyThemeCss();
+        } else {
+          const themes = loadThemes().filter((entry) => entry.packageId === undefined);
+          const index = themes.findIndex((entry) => entry.id === theme.id);
+          if (index >= 0) themes[index] = normalizeTheme(theme); else themes.push(normalizeTheme(theme));
+          saveThemes(themes); registerThemes(); applyBackground(); applyThemeCss();
+        }
+      };
+      const commitDraft = async (theme) => {
+        if (!theme.packageId) return;
+        const payload = Object.assign({}, theme);
+        delete payload.packageId;
+        delete payload.hasOverrides;
+        await savePackageOverridesRemote(theme.packageId, { theme: payload });
+        await loadPackages();
+        registerThemes(); applyBackground(); applyThemeCss();
+      };
+
       const themeActions = {
         getSnapshot: () => ctx.theme.getTheme(),
         subscribe: (fn) => ctx.on("theme/change", fn),
@@ -1441,6 +1611,8 @@ window.__ModuleLoader__.load({
         getPackages: () => getPackagesState(),
         subscribePackages: (fn) => subscribePackages(fn),
         getActivePackage: () => activePackageId,
+        applyDraft: (theme) => applyDraft(theme),
+        commitDraft: (theme) => commitDraft(theme),
       };
       const ThemeSection = () => React.createElement(ThemeRow, Object.assign({ t: ctx.locale.bind(SETTINGS_NS) }, themeActions));
       ctx.effect(() => registerSettingsNavIcon(() => ctx.locale.bind(SETTINGS_NS)("ji-theme.title")), "ji-theme: settings navigation icon");
