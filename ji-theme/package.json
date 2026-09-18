@@ -1,9 +1,9 @@
 {
   "name": "ji-theme",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "JI-Theme — switchable skins, custom color/opacity themes, and wallpaper for the dsh web UI",
+  "description": "JI-Theme — dual-format theme packages (DreamSkin + DSH v2), custom themes, and wallpaper for the dsh web UI",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -13,6 +13,8 @@
   "files": [
     "lib/index.js",
     "lib/client.js",
+    "lib/store.js",
+    "lib/zip.js",
     "lib/contract.js",
     "cordis.patch.yml",
     "README.md",

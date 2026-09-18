@@ -1,19 +1,18 @@
 # JI-Theme
 
-English | [中文](README.md)
+[中文](README.md) | English
 
-A DSH-DreamSkin theme adapter plugin: brings Codex themes to DSH, theme library: https://dreamskin.cc/. Curated skins, a full custom-theme editor, and one-click import of DreamSkin `.zip` packages; wallpapers persist as real files, free of the localStorage quota.
+A theme plugin for the dsh Web UI: curated skins, a full custom-theme editor, and one-click import of DreamSkin and DSH v2 `.zip` packages, with every package kept in a host-side store.
 
 ## Features
 
 - **Curated skins**: Ocean / Forest / Sunset (dark) and Paper / Sakura (light). Switching applies instantly — no restart.
-- **Custom theme editor**: create, edit, and delete your own themes in Settings → Theme. A theme bundles: name, light/dark scheme, session background, surface / sidebar, primary text, secondary text, accent, surface alt, accent alt, secondary, highlight, and border colors, plus opacity sliders (surface, background image, mask). The full `--dsw-alias-*` token map is derived from these fields so the palette stays coherent.
-- **Wallpapers as files**: the background image is part of the theme. Picked images are stored as real files (plugin `wallpapers/` dir) with original bytes — no compression, no dedup, 50 MB per-image cap — then tune zoom, horizontal / vertical position, and blur, with live "chat" and "settings" previews that follow every edit.
-- **Wallpaper contract (single source)**: upload rules (media-type whitelist, 50 MB cap, naming rules, error codes) live only in the host-side `lib/contract.js` and are published via `GET /ji-theme/wallpapers/contract`; the browser fetches them at runtime and mirrors nothing — the two halves can never drift.
-- **Auto-migration**: on first boot after upgrade, legacy `data:` inline wallpapers are migrated to files; a failing one keeps its colors and drops only the wallpaper, without blocking the rest.
-- **DreamSkin import**: import `.zip` packages (theme.json + theme.css + background image) in one click; colors, image, art focus, and css font settings map automatically. The wallpaper is stored as-is; a wallpaper over 50 MB rejects the entire zip with a clear error.
-- **Wallpaper lifecycle**: deleting a theme / replacing or removing its image synchronously removes the file (delete when the reference is gone); if a wallpaper file disappears externally, the theme card shows a "wallpaper missing" badge that clears itself once the file returns.
-- **Persistence**: skin choice and custom themes live in `localStorage`; wallpaper files live on disk (content-addressed names → immutable URLs, stable across restarts).
+- **Custom theme editor**: create, edit, and delete your own themes in Settings → Appearance → "JI Theme". A theme bundles: name, light/dark scheme, session background, surface / sidebar, primary text, secondary text, accent, surface alt, accent alt, secondary, highlight, and border colors, plus three opacity sliders (surface, background image, mask). The full `--dsw-alias-*` token map is derived from these fields so the palette stays coherent.
+- **Theme-bound wallpaper**: the background image is part of the theme. Upload any image; the host stores its original bytes and the theme keeps only the URL, then tune zoom, horizontal / vertical position, and blur with live "chat" and "settings" previews.
+- **Dual-format import**: import DreamSkin `.zip` packages (`manifest.json` + `theme.json` + `theme.css` + art) and DSH v2 skin packages (`skin.json` + `skin.css` + optional `patches.css` / `hooks.mjs` + assets) in one click. DreamSkin colors, art focus, CSS parts, and `--ds-theme-*` variables are translated; v2 stylesheets, patches, light/dark background media, and trusted hooks install as-is.
+- **Host package store**: every imported ZIP is kept intact as `packages/<id>/source.zip` with extracted files under `packages/<id>/files/`. The settings section lists, selects, exports, and deletes packages; `localStorage` only keeps the active selection.
+- **Package overrides**: DreamSkin packages edit through a host-side override layer (the original package stays untouched); DSH v2 packages expose a CSS override editor. Save or reset re-applies the package immediately; export still returns the original ZIP.
+- **Persistence**: imported packages and their assets live on the host; the active selection and custom themes stay in `localStorage`.
 
 ## Install
 
@@ -36,15 +35,16 @@ Then `pnpm install` and restart `dsh web`.
 ## Layout
 
 - `cordis.patch.yml` — composition patch (inserts the `ji-theme` row).
-- `lib/contract.js` — wallpaper contract module (media types / size cap / naming rules / error codes; pure functions, unit-testable).
-- `lib/index.js` — host half (`webServer` routes: upload-to-disk / stream / delete / contract endpoint).
-- `lib/client.js` — browser half (skins + custom theme editor + import + contract fetch).
+- `lib/index.js` — host half: wallpaper routes plus the `/ji-theme/packages` store routes.
+- `lib/store.js` / `lib/zip.js` — package persistence and ZIP extraction.
+- `lib/client.js` — browser half (module-table bundle: skins + custom theme editor + import).
 - `LICENSE` — MIT license text.
 
 ## Boundaries
 
-- The built-in Appearance row (Light / Dark / System) is untouched; JI-Theme works in the "Theme" section of Settings.
-- Skin choice and theme metadata persist per-browser in `localStorage`; wallpaper files live on disk (`<plugin-dir>/wallpapers/`). Switching browsers/machines does not move wallpaper files with the localStorage data.
-- A plugin reinstall/upgrade may wipe the plugin directory, taking the `wallpapers/` files with it — back them up (export) first if you need them.
-- Import maps the fields DreamSkin packages share with JI-Theme; package-specific CSS beyond fonts is not preserved.
+- The built-in Appearance row (Light / Dark / System) is untouched; JI-Theme adds the "JI Theme" group to the Appearance section of Settings.
+- Imported packages live in the host store; the active-selection hint and custom themes stay in per-browser `localStorage`, so clearing browser data does not delete packages.
+- Uploaded wallpaper bytes are stored as host files without re-encoding; deleting a custom theme removes its wallpaper file.
+- DreamSkin CSS is translated through the DSH part map and keeps unknown parts under their original selector; exact Codex layout parity is not possible where DSH has no equivalent part.
+- DSH v2 hooks execute package code only after explicit trust confirmation; declined hooks leave the static stylesheet and background active.
 - Custom theme ids are `custom-<id>`, never colliding with the built-in `light`/`dark`/`system`.

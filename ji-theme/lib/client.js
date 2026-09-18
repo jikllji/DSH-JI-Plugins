@@ -12,6 +12,9 @@ window.__ModuleLoader__.load({
     const STORAGE_THEMES = "ji-theme:themes";
     const STORAGE_LEGACY_CUSTOM = "ji-theme:custom";
     const STORAGE_MIGRATED = "ji-theme:wallpapers-migrated-v1";
+    const STORAGE_PACKAGE = "ji-theme:package";
+    const STORAGE_TRUSTED_HOOKS = "ji-theme:trusted-hooks";
+    const PACKAGES_URL = "/ji-theme/packages";
     // The wallpaper contract (C1 / Q3-B) is fetched at runtime from the host —
     // the browser half never mirrors media types, size caps, or URL rules.
     const CONTRACT_URL = "/ji-theme/wallpapers/contract";
@@ -41,6 +44,8 @@ window.__ModuleLoader__.load({
       "ji-theme.editor.zoom": "缩放", "ji-theme.editor.x": "横向", "ji-theme.editor.y": "纵向", "ji-theme.editor.blur": "模糊", "ji-theme.editor.surfaceOpacity": "表面透明度", "ji-theme.editor.backgroundOpacity": "背景图透明度", "ji-theme.editor.maskOpacity": "遮罩透明度", "ji-theme.preview.chat": "对话", "ji-theme.preview.settings": "设置",
       "ji-theme.editor.save": "保存", "ji-theme.editor.delete": "删除", "ji-theme.editor.cancel": "取消",
       "ji-theme.missing": "壁纸缺失", "ji-theme.storagePath": "壁纸存储", "ji-theme.uploadError": "上传失败", "ji-theme.tooLarge": "壁纸超过 50MB 上限",
+      "ji-theme.packages": "已导入主题包", "ji-theme.packagesEmpty": "暂无主题包", "ji-theme.select": "选择", "ji-theme.selected": "已选", "ji-theme.export": "导出", "ji-theme.delete": "删除", "ji-theme.packageReadonly": "主题包由包管理区维护，请用选择/导出/删除操作",
+      "ji-theme.editPackage": "编辑", "ji-theme.cssEdit": "CSS 覆盖编辑", "ji-theme.cssSave": "保存覆盖", "ji-theme.cssReset": "恢复原始",
     };
     const en = {
       "ji-theme.title": "Theme", "ji-theme.default": "System",
@@ -53,12 +58,22 @@ window.__ModuleLoader__.load({
       "ji-theme.editor.zoom": "Zoom", "ji-theme.editor.x": "Horizontal", "ji-theme.editor.y": "Vertical", "ji-theme.editor.blur": "Blur", "ji-theme.editor.surfaceOpacity": "Surface opacity", "ji-theme.editor.backgroundOpacity": "Background opacity", "ji-theme.editor.maskOpacity": "Mask opacity", "ji-theme.preview.chat": "Chat", "ji-theme.preview.settings": "Settings",
       "ji-theme.editor.save": "Save", "ji-theme.editor.delete": "Delete", "ji-theme.editor.cancel": "Cancel",
       "ji-theme.missing": "wallpaper missing", "ji-theme.storagePath": "Wallpaper storage", "ji-theme.uploadError": "Upload failed", "ji-theme.tooLarge": "Wallpaper exceeds 50MB limit",
+      "ji-theme.packages": "Imported packages", "ji-theme.packagesEmpty": "No packages", "ji-theme.select": "Select", "ji-theme.selected": "Selected", "ji-theme.export": "Export", "ji-theme.delete": "Delete", "ji-theme.packageReadonly": "Package themes are managed in the package list",
+      "ji-theme.editPackage": "Edit", "ji-theme.cssEdit": "CSS override", "ji-theme.cssSave": "Save override", "ji-theme.cssReset": "Reset",
     };
 
     function readStorage(key) { try { const v = window.localStorage.getItem(key); return typeof v === "string" ? v : null; } catch { return null; } }
     function writeStorage(key, value) { try { if (value === null) window.localStorage.removeItem(key); else window.localStorage.setItem(key, value); } catch {} }
     function readSavedSkin() { return readStorage(STORAGE_SKIN); }
     function writeSavedSkin(id) { writeStorage(STORAGE_SKIN, id === DEFAULT_SKIN ? null : id); }
+
+    let packagesState = { list: [], themes: [], revision: 0, loaded: false };
+    const packageListeners = new Set();
+    function notifyPackages() { for (const fn of packageListeners) { try { fn(); } catch {} } }
+    function subscribePackages(fn) { packageListeners.add(fn); return () => packageListeners.delete(fn); }
+    function getPackagesState() { return packagesState; }
+    function readSelectedPackage() { return readStorage(STORAGE_PACKAGE); }
+    function writeSelectedPackage(id) { writeStorage(STORAGE_PACKAGE, id === null || id === undefined ? null : id); }
 
     // ---- wallpaper contract (C1 / Q3-B) ----
     // Fetched at runtime from the host; the browser half mirrors nothing.
@@ -180,7 +195,7 @@ window.__ModuleLoader__.load({
     function loadThemes() {
       const raw = readStorage(STORAGE_THEMES);
       if (raw !== null) {
-        try { const p = JSON.parse(raw); if (Array.isArray(p)) return p.map(normalizeTheme); } catch {}
+        try { const p = JSON.parse(raw); if (Array.isArray(p)) return mergePackageThemes(p.map(normalizeTheme)); } catch {}
       }
       // First run: seed from built-in skins + migrate legacy custom themes.
       const themes = SEED_THEMES.map((t) => normalizeTheme(Object.assign({}, t)));
@@ -197,9 +212,16 @@ window.__ModuleLoader__.load({
         writeStorage(STORAGE_LEGACY_CUSTOM, null);
       }
       writeStorage(STORAGE_THEMES, JSON.stringify(themes));
-      return themes;
+      return mergePackageThemes(themes);
     }
     function saveThemes(themes) { writeStorage(STORAGE_THEMES, JSON.stringify(themes)); }
+    function mergePackageThemes(localThemes) {
+      const merged = localThemes.slice();
+      for (const theme of packagesState.themes) {
+        if (!merged.some((entry) => entry.id === theme.id)) merged.push(theme);
+      }
+      return merged;
+    }
 
     function toRgba(color, alpha) {
       const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(color).trim());
@@ -223,18 +245,36 @@ window.__ModuleLoader__.load({
       const secondary = t.secondaryColor ?? t.accentColor;
       const highlight = t.highlightColor ?? t.accentColor;
       const line = t.lineColor ?? t.textColor;
+      const panelAltColor = toRgba(panelAlt, sa);
+      const surfaceAlt = toRgba(t.surfaceColor, clamp01(sa + 0.08));
+      const labelDimmed = toRgba(t.mutedColor, 0.55);
+      const foregroundOnAccent = t.colorScheme === "light" ? "#ffffff" : "#0f1115";
       return {
-        "--dsw-alias-bg-base": base, "--dsw-alias-bg-layer-1": surface, "--dsw-alias-bg-layer-2": toRgba(panelAlt, sa), "--dsw-alias-bg-overlay": toRgba(t.surfaceColor, clamp01(sa + 0.1)),
+        "--dsw-alias-bg-base": base, "--dsw-alias-bg-layer-1": surface, "--dsw-alias-bg-layer-2": panelAltColor, "--dsw-alias-bg-layer-3": panelAltColor,
+        "--dsw-alias-bg-overlay": surfaceAlt, "--dsw-alias-bg-module-platform": panelAltColor, "--dsw-alias-bg-multi-select": panelAltColor, "--dsw-alias-bg-skeleton": toRgba(t.textColor, 0.08),
         "--dsw-alias-bg-mask-1": "rgba(0, 0, 0, " + maskA + ")", "--dsw-alias-bg-mask-2": "rgba(0, 0, 0, " + clamp01(maskA * 0.5) + ")", "--dsw-alias-bg-mask-3": "rgba(0, 0, 0, " + clamp01(maskA * 2) + ")",
-        "--dsw-alias-border-l1": toRgba(line, 0.1), "--dsw-alias-border-l2": toRgba(line, 0.18),
-        "--dsw-alias-brand-primary": t.accentColor, "--dsw-alias-label-primary": t.textColor, "--dsw-alias-label-secondary": t.mutedColor, "--dsw-alias-label-tertiary": toRgba(t.mutedColor, 0.85),
-        "--dsw-alias-interactive-bg-hover": toRgba(t.accentColor, 0.14), "--dsw-alias-interactive-bg-active": highlight,
-        "--dsw-alias-button-primary-hover": accentAlt,
-        "--dsw-alias-state-business-primary": secondary,
-        "--dsw-alias-markdown-code-block": muted, "--dsw-alias-markdown-inline-code": surface,
-        "--dsw-specific-sidebar-fill": toRgba(t.baseColor, sa), "--dsw-specific-sidebar-nav-item-active": surface, "--dsw-specific-sidebar-nav-item-hover": toRgba(t.surfaceColor, clamp01(sa * 0.8)),
-        "--dsw-specific-bubble": surface, "--dsw-specific-bubble-highlight": toRgba(t.surfaceColor, clamp01(sa + 0.1)),
-        "--dsw-alias-scrollbar-bg-l1": toRgba(t.mutedColor, 0.3), "--dsw-alias-scrollbar-hover-l1": toRgba(t.mutedColor, 0.5),
+        "--dsw-alias-bg-mask-photo": "rgba(0, 0, 0, " + clamp01(maskA * 2.8) + ")", "--dsw-alias-bg-mask-drop": toRgba(t.surfaceColor, 0.7),
+        "--dsw-alias-border-inverted": toRgba(t.textColor, 0.06), "--dsw-alias-border-inverted2": toRgba(t.textColor, 0.08),
+        "--dsw-alias-border-l1": toRgba(line, 0.08), "--dsw-alias-border-l2": toRgba(line, 0.14), "--dsw-alias-border-l2-darkmode-thin": toRgba(line, 0.1), "--dsw-alias-border-l3": toRgba(line, 0.2), "--dsw-alias-border-l4": toRgba(line, 0.28),
+        "--dsw-alias-brand-primary": t.accentColor, "--dsw-alias-brand-primary-invert": base, "--dsw-alias-brand-text": t.accentColor,
+        "--dsw-alias-label-primary": t.textColor, "--dsw-alias-label-primary-dimmed": toRgba(t.textColor, 0.8), "--dsw-alias-label-primary-foreground": foregroundOnAccent,
+        "--dsw-alias-label-secondary": t.mutedColor, "--dsw-alias-label-tertiary": toRgba(t.mutedColor, 0.85), "--dsw-alias-label-caption": toRgba(t.mutedColor, 0.7), "--dsw-alias-label-dimmed": labelDimmed,
+        "--dsw-alias-interactive-bg-hover": toRgba(t.accentColor, 0.12), "--dsw-alias-interactive-bg-hover-accent": toRgba(t.accentColor, 0.2), "--dsw-alias-interactive-bg-hover-solid": panelAltColor,
+        "--dsw-alias-interactive-bg-hover-danger": "rgba(236, 19, 19, 0.08)", "--dsw-alias-interactive-bg-active": highlight,
+        "--dsw-alias-button-contrast-fill": t.textColor, "--dsw-alias-button-elevated-fill": surface, "--dsw-alias-button-floating-fill": surface, "--dsw-alias-button-floating-hover": panelAltColor,
+        "--dsw-alias-button-primary-dimmed": toRgba(t.accentColor, 0.5), "--dsw-alias-button-primary-fill": t.accentColor, "--dsw-alias-button-primary-hover": accentAlt,
+        "--dsw-alias-button-info-fill": t.accentColor, "--dsw-alias-button-info-hover": accentAlt,
+        "--dsw-alias-state-business-primary": secondary, "--dsw-alias-state-business-tertiary": toRgba(secondary, 0.16),
+        "--dsw-alias-state-error-primary": "#ec1313", "--dsw-alias-state-error-secondary": "#f25a5a",
+        "--dsw-alias-state-success-primary": "#22c55e", "--dsw-alias-state-success-secondary": "#4ed17e", "--dsw-alias-state-success-tertiary": "rgba(34, 197, 94, 0.16)",
+        "--dsw-alias-state-warn-primary": "#f59e0b", "--dsw-alias-state-warn-secondary": "#f7ad31", "--dsw-alias-state-warn-label": "#d97706", "--dsw-alias-state-warn-tertiary": "rgba(245, 158, 11, 0.16)",
+        "--dsw-alias-markdown-code-block": muted, "--dsw-alias-markdown-code-block-banner": panelAltColor, "--dsw-alias-markdown-inline-code": surface,
+        "--dsw-alias-markdown-code-segment-selected": surfaceAlt, "--dsw-alias-markdown-code-segment-unselected": base, "--dsw-alias-markdown-placeholder": panelAltColor, "--dsw-alias-markdown-tag": panelAltColor,
+        "--dsw-alias-scrollbar-bg-l1": toRgba(t.mutedColor, 0.3), "--dsw-alias-scrollbar-bg-l2": toRgba(t.mutedColor, 0.35), "--dsw-alias-scrollbar-hover-l1": toRgba(t.mutedColor, 0.5), "--dsw-alias-scrollbar-hover-l2": toRgba(t.mutedColor, 0.55),
+        "--dsw-alias-toast-bg": panelAltColor, "--dsw-alias-tooltip-bg": panelAltColor,
+        "--dsw-specific-bubble": surface, "--dsw-specific-bubble-highlight": surfaceAlt,
+        "--dsw-specific-input-major": surface, "--dsw-specific-login-input": surface, "--dsw-specific-menu": panelAltColor, "--dsw-specific-selector": panelAltColor, "--dsw-specific-tip": panelAltColor,
+        "--dsw-specific-sidebar-fill": toRgba(t.baseColor, sa), "--dsw-specific-sidebar-nav-item-active": surface, "--dsw-specific-sidebar-nav-item-active-accent": t.accentColor, "--dsw-specific-sidebar-nav-item-hover": toRgba(t.surfaceColor, clamp01(sa * 0.8)),
       };
     }
 
@@ -261,6 +301,7 @@ window.__ModuleLoader__.load({
       button: { height: "32px", padding: "0 14px", borderRadius: "8px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-button-elevated-fill)", color: "var(--dsw-alias-label-primary)", cursor: "pointer", fontSize: "13px", font: "inherit", boxSizing: "border-box" },
       buttonDanger: { color: "var(--dsw-alias-state-error-primary)" },
       input: { height: "32px", padding: "0 10px", borderRadius: "8px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: "13px", font: "inherit", boxSizing: "border-box" },
+      textarea: { minHeight: "160px", padding: "10px", borderRadius: "8px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: "12px", fontFamily: "ui-monospace, monospace", lineHeight: "18px", resize: "vertical", boxSizing: "border-box" },
       colorInput: { width: "36px", height: "30px", padding: "0", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: "6px", background: "var(--dsw-alias-bg-layer-1)", cursor: "pointer" },
       fieldRow: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" },
       fieldLabel: { color: "var(--dsw-alias-label-secondary)", fontSize: "13px", whiteSpace: "nowrap", width: "96px" },
@@ -415,52 +456,90 @@ window.__ModuleLoader__.load({
       return uploadWallpaper(mediaType, base64);
     }
 
+    // ---- theme package API (host-side package store) ----
+    async function fetchPackageList() {
+      const res = await fetch(PACKAGES_URL);
+      if (!res.ok) throw new Error("packages HTTP " + res.status);
+      const json = await res.json();
+      return Array.isArray(json.packages) ? json.packages : [];
+    }
+    async function uploadPackageFile(file) {
+      const res = await fetch(PACKAGES_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/zip", "X-JI-Filename": encodeURIComponent(file.name) },
+        body: file,
+      });
+      if (!res.ok) {
+        let message = res.status === 405
+          ? "HTTP 405: host \u7aef\u672a\u52a0\u8f7d ji-theme \u65b0\u7248\u672c\uff0c\u8bf7\u91cd\u542f dsh web"
+          : "HTTP " + res.status;
+        try { const json = await res.json(); if (json && json.message && !String(message).startsWith("HTTP 405")) message = json.message; } catch {}
+        throw new Error(message);
+      }
+      const json = await res.json();
+      return json.package;
+    }
+    async function deletePackageRemote(id) {
+      const res = await fetch(PACKAGES_URL + "/" + encodeURIComponent(id), { method: "DELETE" });
+      if (!res.ok && res.status !== 404) throw new Error("HTTP " + res.status);
+    }
+    function packageFileUrl(id, rel) {
+      const encoded = String(rel || "").split("/").map((part) => encodeURIComponent(part)).join("/");
+      return PACKAGES_URL + "/" + encodeURIComponent(id) + "/files/" + encoded;
+    }
+    async function fetchPackageText(id, rel) {
+      const res = await fetch(packageFileUrl(id, rel));
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.text();
+    }
+    async function fetchPackageOverrides(id) {
+      const res = await fetch(PACKAGES_URL + "/" + encodeURIComponent(id) + "/overrides");
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const json = await res.json();
+      return json.overrides || null;
+    }
+    async function savePackageOverridesRemote(id, payload) {
+      const res = await fetch(PACKAGES_URL + "/" + encodeURIComponent(id) + "/overrides", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+    }
+    async function resetPackageOverridesRemote(id) {
+      const res = await fetch(PACKAGES_URL + "/" + encodeURIComponent(id) + "/overrides", { method: "DELETE" });
+      if (!res.ok && res.status !== 404) throw new Error("HTTP " + res.status);
+    }
+    async function loadPackages() {
+      const list = await fetchPackageList();
+      const themes = [];
+      for (const pkg of list) {
+        if (pkg.format !== "dreamskin-v1") continue;
+        try { themes.push(await fetchDreamSkinTheme(pkg)); }
+        catch (err) { console.warn("[ji-theme] package theme load failed:", pkg.id, err); }
+      }
+      packagesState = { list, themes, revision: packagesState.revision + 1, loaded: true };
+      notifyPackages();
+      return packagesState;
+    }
+    async function fetchDreamSkinTheme(pkg) {
+      const themeJson = JSON.parse(await fetchPackageText(pkg.id, "theme.json"));
+      const cssText = await fetchPackageText(pkg.id, "theme.css").catch(() => "");
+      const imageName = themeJson.image || pkg.background || null;
+      const backgroundUrl = imageName ? packageFileUrl(pkg.id, imageName) : null;
+      const theme = mapDreamSkin(themeJson, cssText, backgroundUrl, pkg.id);
+      theme.packageId = pkg.id;
+      theme.name = pkg.name || theme.name;
+      const overrides = await fetchPackageOverrides(pkg.id).catch(() => null);
+      if (overrides && overrides.theme) {
+        Object.assign(theme, overrides.theme);
+        theme.hasOverrides = true;
+      }
+      theme.id = pkg.id;
+      theme.packageId = pkg.id;
+      theme.name = (overrides && overrides.theme && overrides.theme.name) || pkg.name || theme.name;
+      theme.css = mapDreamSkinCss(cssText, theme);
+      return theme;
+    }
+
     //#region zip import (DreamSkin .zip -> theme)
-    async function parseZip(arrayBuffer) {
-      const bytes = new Uint8Array(arrayBuffer);
-      const view = new DataView(arrayBuffer);
-      let eocd = -1;
-      const min = Math.max(0, bytes.length - 22 - 65535);
-      for (let i = bytes.length - 22; i >= min; i--) {
-        if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
-      }
-      if (eocd === -1) throw new Error('not a zip file');
-      const count = view.getUint16(eocd + 10, true);
-      let cd = view.getUint32(eocd + 16, true);
-      const files = {};
-      for (let i = 0; i < count; i++) {
-        if (view.getUint32(cd, true) !== 0x02014b50) break;
-        const method = view.getUint16(cd + 10, true);
-        const csize = view.getUint32(cd + 20, true);
-        const nameLen = view.getUint16(cd + 28, true);
-        const extraLen = view.getUint16(cd + 30, true);
-        const commentLen = view.getUint16(cd + 32, true);
-        const localOffset = view.getUint32(cd + 42, true);
-        const name = new TextDecoder().decode(bytes.slice(cd + 46, cd + 46 + nameLen));
-        const lnameLen = view.getUint16(localOffset + 26, true);
-        const lextraLen = view.getUint16(localOffset + 28, true);
-        const dataStart = localOffset + 30 + lnameLen + lextraLen;
-        const compressed = bytes.slice(dataStart, dataStart + csize);
-        let data;
-        if (method === 0) data = compressed;
-        else if (method === 8) data = await decompressDeflate(compressed);
-        else throw new Error('unsupported zip method ' + method);
-        files[name] = data;
-        cd += 46 + nameLen + extraLen + commentLen;
-      }
-      return files;
-    }
-    async function decompressDeflate(compressed) {
-      const buf = await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
-      return new Uint8Array(buf);
-    }
-    function toBase64(bytes) {
-      let bin = '';
-      for (let i = 0; i < bytes.length; i += 0x8000) {
-        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-      }
-      return btoa(bin);
-    }
     function hexFromColor(color) {
       if (!color) return null;
       const s = String(color).trim();
@@ -483,28 +562,28 @@ window.__ModuleLoader__.load({
     // nearly transparent wash (1%) instead of an opaque 100% one, so the
     // wallpaper shows through by default on import (user-chosen default).
     const IMPORT_DEFAULT_OPACITY = 0.01;
-    function parseThemeCss(css) {
+    function cssProp(body, name) {
+      const i = body.indexOf(name);
+      if (i === -1) return null;
+      const semi = body.indexOf(';', i);
+      return body.slice(i + name.length, semi === -1 ? body.length : semi).trim();
+    }
+    const DS_PART_MAP = {
+      root: ':root, body',
+      sidebar: '[data-slot="sidebar"], [data-pane="sidebar"]',
+      main: '[data-slot="main"]',
+      header: '[data-slot="main"] header, header',
+      home: '[data-slot="main"], [role="main"]',
+      'home-hero': '[data-slot="main"] h1, [data-slot="main"]',
+      'project-list': '[data-slot="sidebar"] [role="list"], [data-slot="main"] [role="list"], [data-slot="sidebar"]',
+      thread: '[data-slot="conversation.session"], [data-slot="main.conversation"]',
+      message: '[data-chat-flow-kind], [data-message-author-role]',
+      composer: '[data-slot="conversation.composer"], [data-composer-card], [data-composer-seat]',
+      'composer-toolbar': '[data-slot="conversation.composer"] footer, [data-slot="conversation.input.dock"], [data-composer-card] footer',
+      dialog: '[role="dialog"], [role="menu"]',
+    };
+    function parseThemeAlphas(css) {
       const text = css || '';
-      const out = [];
-      const prop = (body, name) => {
-        const i = body.indexOf(name);
-        if (i === -1) return null;
-        const semi = body.indexOf(';', i);
-        return body.slice(i + name.length, semi === -1 ? body.length : semi).trim();
-      };
-      const root = extractPart(text, 'root');
-      if (root) {
-        const font = prop(root, 'font-family:');
-        // letter-spacing is deliberately NOT imported: dsh's composer renders
-        // the visible glyphs on a backdrop layer while the native caret lives
-        // in the textarea, and Chromium's UA sheet resets form controls to
-        // letter-spacing: normal. Any non-zero spacing inherited from body
-        // therefore makes the glyphs advance faster than the caret, so the
-        // caret lags behind the typed letters. Dropping it keeps every
-        // imported theme caret-safe (applies to any DreamSkin package, not
-        // just this one).
-        if (font) out.push('font-family:' + font);
-      }
       const alphaOf = (part) => {
         const body = extractPart(text, part);
         if (!body) return null;
@@ -524,10 +603,64 @@ window.__ModuleLoader__.load({
         return Number.isFinite(alpha) ? clamp01(alpha) : null;
       };
       return {
-        css: out.length ? 'body{' + out.join(';') + '}' : '',
         backgroundOpacity: alphaOf('main') ?? alphaOf('thread') ?? IMPORT_DEFAULT_OPACITY,
         surfaceOpacity: alphaOf('message') ?? alphaOf('composer') ?? alphaOf('panel') ?? IMPORT_DEFAULT_OPACITY,
       };
+    }
+    function dsThemeVars(t) {
+      const sa = toAlpha(t.surfaceOpacity, 1);
+      const line = t.lineColor ?? t.textColor;
+      return {
+        '--ds-theme-color-background': t.baseColor,
+        '--ds-theme-color-panel': toRgba(t.surfaceColor, sa),
+        '--ds-theme-color-panel-alt': toRgba(t.panelAltColor ?? t.surfaceColor, sa),
+        '--ds-theme-color-accent': t.accentColor,
+        '--ds-theme-color-accent-alt': t.accentAltColor ?? t.accentColor,
+        '--ds-theme-color-secondary': t.secondaryColor ?? t.accentColor,
+        '--ds-theme-color-highlight': t.highlightColor ?? t.accentColor,
+        '--ds-theme-color-text': t.textColor,
+        '--ds-theme-color-muted': t.mutedColor,
+        '--ds-theme-color-line': line,
+        '--ds-theme-font-family': t.fontFamily || 'inherit',
+        '--ds-theme-font-scale': '1',
+        '--ds-theme-surface-opacity': String(sa),
+        '--ds-theme-surface-blur': '12px',
+        '--ds-theme-surface-radius': '12px',
+        '--ds-theme-surface-border-alpha': '0.24',
+        '--ds-theme-surface-shadow': '0 10px 30px rgba(0,0,0,0.18)',
+        '--ds-theme-image-focus-x': String(t.backgroundX ?? 0),
+        '--ds-theme-image-focus-y': String(t.backgroundY ?? 0),
+        '--ds-theme-image-zoom': String(t.backgroundZoom ?? 1),
+        '--ds-theme-image-dim': String(toAlpha(t.backgroundOpacity, DEFAULT_BG_OPACITY)),
+        '--ds-theme-image-task-intensity': '1',
+        '--ds-theme-density-scale': '1',
+        '--ds-theme-motion-level': '1',
+      };
+    }
+    function mapDreamSkinCss(css, draft) {
+      const text = String(css || '');
+      const out = [];
+      const vars = dsThemeVars(draft);
+      out.push('body{' + Object.entries(vars).map(([k, v]) => k + ':' + v).join(';') + '}');
+      const root = extractPart(text, 'root');
+      if (root) {
+        const font = cssProp(root, 'font-family:');
+        if (font) out.push('body{font-family:' + font + '}');
+      }
+      const ruleRe = /\[data-ds-part="([^"]+)"\]((?::[a-z-]+)*)\s*\{([^{}]*)\}/gi;
+      let match;
+      let matched = 0;
+      while ((match = ruleRe.exec(text)) !== null) {
+        matched += 1;
+        const part = match[1];
+        const state = match[2] || '';
+        const body = match[3].replace(/letter-spacing\s*:[^;{}]+;?/gi, '');
+        const mapped = DS_PART_MAP[part] || '[data-ds-part="' + part + '"]';
+        const selectors = mapped.split(',').map((selector) => selector.trim() + state).join(', ');
+        if (body.trim().length > 0) out.push(selectors + '{' + body + '}');
+      }
+      if (matched === 0) out.push('body{font-family:' + (draft.fontFamily || 'inherit') + '}');
+      return out.join('\n') + '\ninput, textarea, [contenteditable] { letter-spacing: normal; }';
     }
     function imageMime(name) {
       const ext = String(name || '').split('.').pop().toLowerCase();
@@ -538,13 +671,14 @@ window.__ModuleLoader__.load({
     }
     // No compression on import either (spec Q7-B): wallpaper bytes from the zip
     // are uploaded as-is; a wallpaper over the cap rejects the whole zip (Q9-C).
-    function mapDreamSkin(themeJson, cssText, imageDataUrl) {
+    function mapDreamSkin(themeJson, cssText, imageDataUrl, forcedId) {
       const c = themeJson.colors || {};
       const art = themeJson.art || {};
-      const parsed = parseThemeCss(cssText);
-      return {
-        id: 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        name: themeJson.name || themeJson.id || '导入主题',
+      const parsed = parseThemeAlphas(cssText);
+      const root = extractPart(cssText, 'root');
+      const theme = {
+        id: forcedId || 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name: themeJson.name || themeJson.id || 'Imported theme',
         colorScheme: themeJson.appearance === 'light' ? 'light' : 'dark',
         baseColor: c.background || '#000000',
         surfaceColor: c.panel || c.background || '#000000',
@@ -556,6 +690,7 @@ window.__ModuleLoader__.load({
         secondaryColor: c.secondary || c.accent || '#ffffff',
         highlightColor: c.highlight || c.accent || '#ffffff',
         lineColor: hexFromColor(c.line) || c.text || '#ffffff',
+        fontFamily: root ? cssProp(root, 'font-family:') : null,
         opacity: 1,
         surfaceOpacity: parsed.surfaceOpacity,
         background: imageDataUrl || null,
@@ -564,8 +699,10 @@ window.__ModuleLoader__.load({
         backgroundZoom: 1,
         backgroundX: art.focusX != null ? Math.round((art.focusX - 0.5) * 200) : 0,
         backgroundY: art.focusY != null ? Math.round((art.focusY - 0.5) * 200) : 0,
-        css: parsed.css,
+        css: ''
       };
+      theme.css = mapDreamSkinCss(cssText, theme);
+      return theme;
     }
     //#endregion
 
@@ -590,6 +727,18 @@ window.__ModuleLoader__.load({
         return off;
       }, []);
 
+      const [packages, setPackages] = React.useState(() => getPackagesState().list);
+      const [activePackageId, setActivePackageId] = React.useState(() => props.getActivePackage());
+      React.useEffect(() => {
+        const off = props.subscribePackages(() => {
+          setPackages(getPackagesState().list);
+          setActivePackageId(props.getActivePackage());
+          setThemes(props.loadThemes());
+        });
+        props.loadPackages().catch(() => {});
+        return off;
+      }, []);
+
       // Q11-B: show the host-side wallpaper storage path as a small line.
       // Runs only after the contract is ready (urlPrefix comes from it).
       React.useEffect(() => {
@@ -610,6 +759,7 @@ window.__ModuleLoader__.load({
       const select = (id) => {
         props.setSkin(id);
         setPref(id);
+        setActivePackageId(getPackagesState().list.some((entry) => entry.id === id) ? id : null);
         if (editing !== null) {
           cleanupUnsavedBackground(editing.draft);
           if (id === DEFAULT_SKIN) { setEditing(null); }
@@ -619,38 +769,79 @@ window.__ModuleLoader__.load({
       const refreshThemes = () => setThemes(props.loadThemes());
       const startNew = () => { if (editing !== null) cleanupUnsavedBackground(editing.draft); setEditing({ mode: "new", index: -1, draft: newCustomTheme() }); };
       const zipRef = React.useRef(null);
-      const onZipFile = (event) => {
+      const onZipFile = async (event) => {
         const file = event.target.files?.[0];
+        event.target.value = "";
         if (file === undefined) return;
-        const reader = new FileReader();
-        reader.onerror = () => { event.target.value = ""; };
-        reader.onload = async () => {
-          try {
-            const files = await parseZip(reader.result);
-            const themeJsonText = files["theme.json"] ? new TextDecoder().decode(files["theme.json"]) : null;
-            if (!themeJsonText) throw new Error("zip missing theme.json");
-            const themeJson = JSON.parse(themeJsonText);
-            const cssText = files["theme.css"] ? new TextDecoder().decode(files["theme.css"]) : "";
-            const imageName = themeJson.image || "background.webp";
-            let backgroundUrl = null;
-            if (files[imageName]) {
-              const bytes = files[imageName];
-              // Q9-C: a wallpaper over the cap rejects the ENTIRE zip. The cap
-              // comes from the fetched contract (Q3-B), never mirrored.
-              if (bytes.length > requireContract().maxImageBytes) throw new Error(t("ji-theme.tooLarge") + " (zip rejected)");
-              backgroundUrl = await uploadWallpaper(imageMime(imageName), toBase64(bytes));
-            }
-            const theme = mapDreamSkin(themeJson, cssText, backgroundUrl);
-            props.addTheme(theme);
-            refreshThemes();
-          } catch (err) {
-            const msg = err && err.message ? err.message : String(err);
-            setActionError(msg);
-            console.error("[ji-theme] import failed:", err);
+        setActionError(null);
+        try {
+          const meta = await uploadPackageFile(file);
+          const state = await props.loadPackages();
+          refreshThemes();
+          const pkg = state.list.find((entry) => entry.id === (meta && meta.id)) || state.list[0];
+          if (pkg !== undefined) {
+            props.selectPackage(pkg);
+            setActivePackageId(pkg.id);
+            if (pkg.format === "dreamskin-v1") setPref(pkg.id);
           }
-          event.target.value = "";
-        };
-        reader.readAsArrayBuffer(file);
+        } catch (err) {
+          setActionError(err && err.message ? err.message : String(err));
+          console.error("[ji-theme] import failed:", err);
+        }
+      };
+      const selectPackage = (pkg) => {
+        props.selectPackage(pkg);
+        setActivePackageId(pkg.id);
+        if (pkg.format === "dreamskin-v1") setPref(pkg.id);
+        else setPref(props.getSnapshot().preference);
+      };
+      const removePackage = async (pkg) => {
+        try {
+          await props.deletePackage(pkg);
+          const state = getPackagesState();
+          setPackages(state.list);
+          setActivePackageId(props.getActivePackage());
+          refreshThemes();
+        } catch (err) { setActionError(err && err.message ? err.message : String(err)); }
+      };
+      const [cssEdit, setCssEdit] = React.useState(null);
+      const [cssBusy, setCssBusy] = React.useState(false);
+      const beginCssEdit = async (pkg) => {
+        try {
+          const overrides = await fetchPackageOverrides(pkg.id);
+          setCssEdit({ id: pkg.id, text: overrides && typeof overrides.css === "string" ? overrides.css : "" });
+        } catch (err) { setActionError(err && err.message ? err.message : String(err)); }
+      };
+      const saveCssEdit = async () => {
+        if (cssEdit === null) return;
+        setCssBusy(true);
+        try {
+          await savePackageOverridesRemote(cssEdit.id, { css: cssEdit.text });
+          const pkg = packages.find((entry) => entry.id === cssEdit.id);
+          setCssEdit(null);
+          await props.loadPackages();
+          if (pkg) props.selectPackage(pkg);
+          refreshThemes();
+        } catch (err) { setActionError(err && err.message ? err.message : String(err)); }
+        finally { setCssBusy(false); }
+      };
+      const resetCssEdit = async () => {
+        if (cssEdit === null) return;
+        setCssBusy(true);
+        try {
+          await resetPackageOverridesRemote(cssEdit.id);
+          const pkg = packages.find((entry) => entry.id === cssEdit.id);
+          setCssEdit({ id: cssEdit.id, text: "" });
+          await props.loadPackages();
+          if (pkg) props.selectPackage(pkg);
+        } catch (err) { setActionError(err && err.message ? err.message : String(err)); }
+        finally { setCssBusy(false); }
+      };
+      const editPackage = (pkg) => {
+        if (pkg.format === "dsh-v2") { beginCssEdit(pkg); return; }
+        const theme = themes.find((entry) => entry.packageId === pkg.id);
+        selectPackage(pkg);
+        if (theme) setEditing({ mode: "edit", index: -1, draft: Object.assign({}, theme) });
       };
       const startEditSelected = () => {
         if (pref === "system" || pref === "light" || pref === "dark") return;
@@ -676,13 +867,24 @@ window.__ModuleLoader__.load({
       const discardDraft = () => { if (editing !== null) { cleanupUnsavedBackground(editing.draft); setEditing(null); } };
       const save = () => {
         if (editing === null) return;
-        props.saveTheme(editing.draft);
+        const draft = editing.draft;
+        const done = () => { setEditing(null); refreshThemes(); };
+        if (draft.packageId) {
+          props.savePackageOverrides(draft.packageId, draft).then(done).catch((err) => setActionError(err && err.message ? err.message : String(err)));
+          return;
+        }
+        props.saveTheme(draft);
         setEditing(null);
         refreshThemes();
       };
       const remove = () => {
         if (editing === null) return;
-        props.deleteTheme(editing.draft.id);
+        const draft = editing.draft;
+        if (draft.packageId) {
+          props.resetPackageOverrides(draft.packageId).then(() => { setEditing(null); refreshThemes(); }).catch((err) => setActionError(err && err.message ? err.message : String(err)));
+          return;
+        }
+        props.deleteTheme(draft.id);
         setEditing(null);
         refreshThemes();
       };
@@ -724,6 +926,31 @@ window.__ModuleLoader__.load({
           React.createElement(Card, { key: "__import__", selected: false, onSelect: () => zipRef.current?.click(), label: t("ji-theme.import") }, React.createElement(ImportSwatch, {})),
         ),
         React.createElement("input", { ref: zipRef, type: "file", accept: ".zip,application/zip", style: { display: "none" }, onChange: onZipFile }),
+        React.createElement("div", { style: S.title }, t("ji-theme.packages")),
+        packages.length === 0
+          ? React.createElement("div", { style: { color: "var(--dsw-alias-label-tertiary)", fontSize: "12px" } }, t("ji-theme.packagesEmpty"))
+          : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "6px" } },
+            packages.map((pkg) => React.createElement("div", { key: pkg.id, style: { display: "flex", alignItems: "center", gap: "8px" } },
+              React.createElement("div", { style: { width: "44px", height: "30px", borderRadius: "6px", flex: "none", background: pkg.accent || "var(--dsw-alias-bg-layer-2)", backgroundImage: pkg.background ? 'url("' + packageFileUrl(pkg.id, pkg.background) + '")' : undefined, backgroundSize: "cover", backgroundPosition: "center", border: "1px solid var(--dsw-alias-border-l2)" } }),
+              React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { color: "var(--dsw-alias-label-primary)", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, pkg.name || pkg.id),
+                React.createElement("div", { style: { color: "var(--dsw-alias-label-tertiary)", fontSize: "11px" } }, (pkg.format === "dsh-v2" ? "DSH v2" : "DreamSkin") + (pkg.version ? " · " + pkg.version : "")),
+              ),
+              React.createElement("button", { type: "button", style: S.button, onClick: () => selectPackage(pkg) }, activePackageId === pkg.id ? t("ji-theme.selected") : t("ji-theme.select")),
+              React.createElement("button", { type: "button", style: S.button, onClick: () => editPackage(pkg) }, t("ji-theme.editPackage")),
+              React.createElement("a", { href: PACKAGES_URL + "/" + encodeURIComponent(pkg.id) + "/export", download: pkg.id + ".zip", style: Object.assign({}, S.button, { textDecoration: "none", lineHeight: "30px" }) }, t("ji-theme.export")),
+              React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: () => { removePackage(pkg); } }, t("ji-theme.delete")),
+            )),
+          ),
+        cssEdit === null ? null : React.createElement("div", { style: S.editor },
+          React.createElement("div", { style: S.title }, t("ji-theme.cssEdit")),
+          React.createElement("textarea", { value: cssEdit.text, style: S.textarea, onChange: (event) => setCssEdit({ id: cssEdit.id, text: event.target.value }) }),
+          React.createElement("div", { style: S.actionRow },
+            React.createElement("button", { type: "button", disabled: cssBusy, style: S.button, onClick: saveCssEdit }, t("ji-theme.cssSave")),
+            React.createElement("button", { type: "button", disabled: cssBusy, style: Object.assign({}, S.button, S.buttonDanger), onClick: resetCssEdit }, t("ji-theme.cssReset")),
+            React.createElement("button", { type: "button", disabled: cssBusy, style: S.button, onClick: () => setCssEdit(null) }, t("ji-theme.editor.cancel")),
+          ),
+        ),
         draft === null ? null : React.createElement("div", { style: S.editor },
           React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } },
             React.createElement("div", { style: { flex: 1, minWidth: "260px", display: "flex", flexDirection: "column", gap: "10px" } },
@@ -758,7 +985,7 @@ window.__ModuleLoader__.load({
               React.createElement("div", { style: S.actionRow },
                 React.createElement("button", { type: "button", style: S.button, onClick: save }, t("ji-theme.editor.save")),
                 React.createElement("button", { type: "button", style: S.button, onClick: discardDraft }, t("ji-theme.editor.cancel")),
-                React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: remove }, t("ji-theme.editor.delete")),
+                React.createElement("button", { type: "button", style: Object.assign({}, S.button, S.buttonDanger), onClick: remove }, draft.packageId ? t("ji-theme.cssReset") : t("ji-theme.editor.delete")),
               ),
             ),
           ),
@@ -767,6 +994,63 @@ window.__ModuleLoader__.load({
     }
 
     const inject = ["slots", "locale", "theme"];
+    // ── settings navigation icon ─────────────────────────────────────────
+    // DSH 0.1.x projects only id/order/label from a settings.section
+    // registration and picks nav glyphs from a closed list of built-in ids, so
+    // an external section falls back to the shell's gear. Until that public
+    // contract grows an icon field, mark only this plugin's own localized row
+    // and let this stylesheet replace the glyph — no host source change.
+    const NAV_MARKER = "data-ji-theme-settings-nav";
+    const NAV_ICON_SVG = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'>"
+      + "<path fill='black' d='M11.3496 8C11.3496 6.14985 9.85015 4.65039 8 4.65039C6.14985 4.65039 4.65039 6.14985 4.65039 8C4.65039 9.85015 6.14985 11.3496 8 11.3496C9.85015 11.3496 11.3496 9.85015 11.3496 8ZM12.6504 8C12.6504 10.5681 10.5681 12.6504 8 12.6504C5.43188 12.6504 3.34961 10.5681 3.34961 8C3.34961 5.43188 5.43188 3.34961 8 3.34961C10.5681 3.34961 12.6504 5.43188 12.6504 8Z'/>"
+      + "<path fill='black' d='M8.65039 0.5V2.5H7.34961V0.5H8.65039Z'/>"
+      + "<path fill='black' d='M8.65039 13.5V15.5H7.34961V13.5H8.65039Z'/>"
+      + "<path fill='black' d='M3.15808 2.24035L4.57229 3.65456L3.6525 4.57435L2.23829 3.16014L3.15808 2.24035Z'/>"
+      + "<path fill='black' d='M12.3505 11.4327L13.7647 12.8469L12.8449 13.7667L11.4307 12.3525L12.3505 11.4327Z'/>"
+      + "<path fill='black' d='M2.24537 12.8469L3.65958 11.4327L4.57937 12.3525L3.16516 13.7667L2.24537 12.8469Z'/>"
+      + "<path fill='black' d='M11.4377 3.65455L12.852 2.24033L13.7718 3.16012L12.3575 4.57434L11.4377 3.65455Z'/>"
+      + "<path fill='black' d='M0.5 7.35461H2.5V8.6554H0.5L0.5 7.35461Z'/>"
+      + "<path fill='black' d='M13.5 7.35461H15.5V8.6554H13.5V7.35461Z'/>"
+      + "</svg>";
+    const NAV_MASK = "url(\"data:image/svg+xml," + encodeURIComponent(NAV_ICON_SVG) + "\")";
+    const NAV_CSS = "[" + NAV_MARKER + "]>svg:first-child{display:none}"
+      + "[" + NAV_MARKER + "]::before{content:'';flex:none;width:16px;height:16px;background:currentColor;"
+      + "-webkit-mask:" + NAV_MASK + " center/contain no-repeat;mask:" + NAV_MASK + " center/contain no-repeat}";
+    if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=\"ji-theme/nav-icon.css\"]") === null) {
+      const tag = document.createElement("style");
+      tag.dataset.plugin = "ji-theme";
+      tag.dataset.pluginCss = "ji-theme/nav-icon.css";
+      tag.textContent = NAV_CSS;
+      document.head.appendChild(tag);
+    }
+
+    /**
+     * Keep the marker on the settings-nav button whose visible text is this
+     * plugin's current localized section label.
+     * @param label - the same locale-aware resolver used by the registration.
+     * @returns disposer that disconnects observation and removes the marker.
+     */
+    function registerSettingsNavIcon(label) {
+      if (typeof document === "undefined" || document.body === null) return () => {};
+      let disposed = false;
+      const sync = () => {
+        if (disposed) return;
+        const current = String(label() ?? "").trim();
+        for (const button of document.querySelectorAll("[role=\"dialog\"] nav button")) {
+          if (current.length > 0 && (button.textContent ?? "").trim() === current) button.setAttribute(NAV_MARKER, "");
+          else button.removeAttribute(NAV_MARKER);
+        }
+      };
+      sync();
+      const observer = new MutationObserver(sync);
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      return () => {
+        disposed = true;
+        observer.disconnect();
+        for (const element of document.querySelectorAll("[" + NAV_MARKER + "]")) element.removeAttribute(NAV_MARKER);
+      };
+    }
+
 
     function apply(ctx) {
       let backgroundEl = null;
@@ -855,6 +1139,155 @@ window.__ModuleLoader__.load({
       applyThemeCss();
       ctx.effect(() => () => { if (cssEl !== null) { cssEl.remove(); cssEl = null; } }, "ji-theme: css cleanup");
 
+      let packageStyles = [];
+      let packageBgEl = null;
+      let packageLayersEl = null;
+      let packageHooksCleanup = null;
+      let activePackageId = readSelectedPackage();
+
+      const removePackageStyles = () => { packageStyles.forEach((el) => el.remove()); packageStyles = []; };
+      const removePackageBackground = () => { if (packageBgEl !== null) { packageBgEl.remove(); packageBgEl = null; } };
+      const removePackageLayers = () => { if (packageLayersEl !== null) { packageLayersEl.remove(); packageLayersEl = null; } };
+      const removePackageHooks = () => { if (packageHooksCleanup !== null) { try { packageHooksCleanup(); } catch {} packageHooksCleanup = null; } };
+      const cleanupPackage = () => {
+        removePackageStyles();
+        removePackageBackground();
+        removePackageHooks();
+        removePackageLayers();
+        if (document.documentElement.dataset.dshSkin) delete document.documentElement.dataset.dshSkin;
+      };
+      ctx.effect(() => () => cleanupPackage(), "ji-theme: package cleanup");
+
+      const installPackageStyle = (label, css) => {
+        const el = document.createElement("style");
+        el.dataset.jiPackage = activePackageId || "";
+        el.dataset.jiPart = label;
+        el.textContent = css;
+        document.head.appendChild(el);
+        packageStyles.push(el);
+      };
+      const prepareV2Css = (css, id) => {
+        const assetBase = PACKAGES_URL + "/" + encodeURIComponent(id) + "/files";
+        let text = String(css || "");
+        text = text.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (match, quote, raw) => {
+          const value = String(raw).trim();
+          if (value.length === 0 || /^(?:data:|https?:|\/\/|\/|#)/i.test(value) || value.startsWith("var(")) return match;
+          return "url(" + quote + assetBase + "/" + value.replace(/^\.\//, "") + quote + ")";
+        });
+        const clones = [];
+        text = text.replace(/(^|\})\s*(:root|html)\s*\{([^{}]*)\}/g, (match, prefix, selector, body) => {
+          const declarations = body.match(/--dsw-[\w-]+\s*:[^;]+;?/g) || [];
+          if (declarations.length > 0) clones.push(declarations.join("\n"));
+          return match;
+        });
+        if (clones.length > 0) text += "\nbody {\n" + clones.join("\n") + "\n}";
+        return text;
+      };
+      const installPackageBackground = (pkg) => {
+        const media = pkg.backgroundMedia;
+        if (!media) return;
+        const variant = document.body.hasAttribute("data-ds-dark-theme") ? (media.dark || media.light) : (media.light || media.dark);
+        if (!variant || typeof variant.src !== "string") return;
+        packageBgEl = document.createElement("div");
+        packageBgEl.style.cssText = "position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden;";
+        let node;
+        if (variant.type === "video") { node = document.createElement("video"); node.autoplay = true; node.muted = true; node.loop = true; node.playsInline = true; }
+        else node = document.createElement("img");
+        node.src = packageFileUrl(pkg.id, variant.src);
+        node.style.cssText = "width:100%;height:100%;object-fit:cover;";
+        packageBgEl.appendChild(node);
+        if (typeof variant.scrim === "string" && variant.scrim.length > 0) {
+          const scrim = document.createElement("div");
+          scrim.style.cssText = "position:absolute;inset:0;background:" + variant.scrim;
+          packageBgEl.appendChild(scrim);
+        }
+        document.body.prepend(packageBgEl);
+      };
+      const hooksTrusted = (id) => { try { const list = JSON.parse(readStorage(STORAGE_TRUSTED_HOOKS) || "[]"); return Array.isArray(list) && list.includes(id); } catch { return false; } };
+      const trustHooks = (id) => {
+        let list = [];
+        try { const parsed = JSON.parse(readStorage(STORAGE_TRUSTED_HOOKS) || "[]"); if (Array.isArray(parsed)) list = parsed; } catch {}
+        if (!list.includes(id)) list.push(id);
+        writeStorage(STORAGE_TRUSTED_HOOKS, JSON.stringify(list));
+      };
+      const installPackageHooks = async (pkg) => {
+        if (!pkg.hooksEntry) return;
+        if (!hooksTrusted(pkg.id)) {
+          const allowed = typeof window !== "undefined" && typeof window.confirm === "function"
+            ? window.confirm("主题包 " + (pkg.name || pkg.id) + " 包含 hooks.mjs，是否信任并执行？")
+            : false;
+          if (!allowed) return;
+          trustHooks(pkg.id);
+        }
+        const layersRoot = document.createElement("div");
+        layersRoot.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:-2;";
+        const background = document.createElement("div");
+        background.style.cssText = "position:absolute;inset:0;";
+        const decoration = document.createElement("div");
+        decoration.style.cssText = "position:absolute;inset:0;z-index:1;";
+        layersRoot.append(background, decoration);
+        document.body.prepend(layersRoot);
+        packageLayersEl = layersRoot;
+        const cleanups = [];
+        const ctxHooks = {
+          skinId: pkg.id,
+          scopeAttr: pkg.id,
+          assetBase: packageFileUrl(pkg.id, "").replace(/\/$/, ""),
+          layers: { background, decoration },
+          theme: {
+            get: () => document.body.hasAttribute("data-ds-dark-theme") ? "dark" : "light",
+            subscribe: (fn) => { const observer = new MutationObserver(() => fn(document.body.hasAttribute("data-ds-dark-theme") ? "dark" : "light")); observer.observe(document.body, { attributes: true, attributeFilter: ["data-ds-dark-theme"] }); return () => observer.disconnect(); },
+          },
+          onCleanup: (fn) => { if (typeof fn === "function") cleanups.push(fn); },
+        };
+        try {
+          const mod = await import(/* @vite-ignore */ packageFileUrl(pkg.id, pkg.hooksEntry));
+          const hooks = typeof mod.default === "function" ? mod.default() : mod;
+          if (hooks && typeof hooks.apply === "function") hooks.apply(ctxHooks);
+          packageHooksCleanup = () => {
+            try { if (hooks && typeof hooks.dispose === "function") hooks.dispose(); } catch (err) { console.warn("[ji-theme] hooks dispose failed:", err); }
+            for (const cleanup of cleanups.reverse()) { try { cleanup(); } catch (err) { console.warn("[ji-theme] hooks cleanup failed:", err); } }
+          };
+        } catch (err) { console.warn("[ji-theme] hooks import failed; static skin stays active:", err); }
+      };
+      const applyPackage = async (pkg) => {
+        cleanupPackage();
+        activePackageId = pkg ? pkg.id : null;
+        writeSelectedPackage(activePackageId);
+        if (!pkg) { applyBackground(); applyThemeCss(); return; }
+        if (pkg.format === "dreamskin-v1") {
+          registerThemes();
+          const theme = loadThemes().find((entry) => entry.id === pkg.id);
+          if (theme) { ctx.theme.setTheme(theme.id); writeSavedSkin(theme.id); applyBackground(); applyThemeCss(); }
+          return;
+        }
+        const current = ctx.theme.getTheme().preference;
+        if (current !== "system" && current !== "light" && current !== "dark") { ctx.theme.setTheme(DEFAULT_SKIN); writeSavedSkin(DEFAULT_SKIN); }
+        else writeSavedSkin(DEFAULT_SKIN);
+        document.documentElement.dataset.dshSkin = pkg.id;
+        const stylesheet = pkg.stylesheet || "skin.css";
+        try { installPackageStyle("skin.css", prepareV2Css(await fetchPackageText(pkg.id, stylesheet), pkg.id)); }
+        catch (err) { console.warn("[ji-theme] skin.css load failed:", err); }
+        if (pkg.patches) {
+          try { installPackageStyle("patches.css", prepareV2Css(await fetchPackageText(pkg.id, pkg.patches), pkg.id)); }
+          catch (err) { console.warn("[ji-theme] patches.css load failed:", err); }
+        }
+        try {
+          const overrides = await fetchPackageOverrides(pkg.id);
+          if (overrides && typeof overrides.css === "string" && overrides.css.length > 0) installPackageStyle("overrides.css", prepareV2Css(overrides.css, pkg.id));
+        } catch (err) { console.warn("[ji-theme] override css load failed:", err); }
+        installPackageBackground(pkg);
+        await installPackageHooks(pkg);
+        applyBackground();
+        applyThemeCss();
+      };
+      loadPackages().then((state) => {
+        registerThemes();
+        const savedPackage = state.list.find((entry) => entry.id === readSelectedPackage());
+        if (savedPackage) return applyPackage(savedPackage);
+        return null;
+      }).catch((err) => console.warn("[ji-theme] package load failed:", err));
+
       ctx.effect(() => ctx.locale.register(SETTINGS_NS, { zh, en }), "ji-theme: settings row dictionaries");
       // Re-assert the saved skin when the runtime preference falls back to a
       // built-in: custom theme ids are not persistable in the Host settings
@@ -890,6 +1323,10 @@ window.__ModuleLoader__.load({
             applyBackground();
             applyThemeCss();
             reassertSavedSkin();
+            if (activePackageId !== null) {
+              const pkg = packagesState.list.find((entry) => entry.id === activePackageId);
+              if (pkg && pkg.format === "dsh-v2") { removePackageBackground(); installPackageBackground(pkg); }
+            }
           } catch (err) {
             console.error("[ji-theme] deferred reapply failed:", err);
           }
@@ -904,13 +1341,63 @@ window.__ModuleLoader__.load({
       const themeActions = {
         getSnapshot: () => ctx.theme.getTheme(),
         subscribe: (fn) => ctx.on("theme/change", fn),
-        setSkin: (id) => { ctx.theme.setTheme(id); writeSavedSkin(id); },
+        setSkin: (id) => {
+          const pkg = packagesState.list.find((entry) => entry.id === id);
+          if (pkg && pkg.format === "dreamskin-v1") {
+            if (activePackageId !== id) cleanupPackage();
+            activePackageId = id;
+            writeSelectedPackage(id);
+            registerThemes();
+            ctx.theme.setTheme(id);
+            writeSavedSkin(id);
+            applyBackground();
+            applyThemeCss();
+            return;
+          }
+          cleanupPackage();
+          activePackageId = null;
+          writeSelectedPackage(null);
+          ctx.theme.setTheme(id);
+          writeSavedSkin(id);
+          applyBackground();
+          applyThemeCss();
+        },
         loadThemes: () => loadThemes(),
-        saveTheme: (theme) => { const themes = loadThemes(); const index = themes.findIndex((x) => x.id === theme.id); const old = index >= 0 ? themes[index] : null; if (index >= 0) themes[index] = theme; else themes.push(theme); saveThemes(themes); registerThemes(); if (old && old.background && old.background !== theme.background) deleteWallpaperFile(old.background); },
-        addTheme: (theme) => { const themes = loadThemes(); themes.push(normalizeTheme(theme)); saveThemes(themes); registerThemes(); ctx.theme.setTheme(theme.id); writeSavedSkin(theme.id); },
-        deleteTheme: (id) => { const themes = loadThemes(); const victim = themes.find((x) => x.id === id); const wasActive = ctx.theme.getTheme().preference === id; saveThemes(themes.filter((x) => x.id !== id)); registerThemes(); if (victim && victim.background) deleteWallpaperFile(victim.background); if (wasActive) { ctx.theme.setTheme(DEFAULT_SKIN); writeSavedSkin(DEFAULT_SKIN); } },
+        saveTheme: (theme) => { const themes = loadThemes().filter((entry) => entry.packageId === undefined); const index = themes.findIndex((x) => x.id === theme.id); const old = index >= 0 ? themes[index] : null; if (index >= 0) themes[index] = theme; else themes.push(theme); saveThemes(themes); registerThemes(); if (old && old.background && old.background !== theme.background) deleteWallpaperFile(old.background); },
+        deleteTheme: (id) => { const themes = loadThemes(); const victim = themes.find((x) => x.id === id); const wasActive = ctx.theme.getTheme().preference === id; saveThemes(themes.filter((x) => x.id !== id && x.packageId === undefined)); registerThemes(); if (victim && victim.background && victim.packageId === undefined) deleteWallpaperFile(victim.background); if (wasActive) { ctx.theme.setTheme(DEFAULT_SKIN); writeSavedSkin(DEFAULT_SKIN); } },
+        selectPackage: (pkg) => { applyPackage(pkg).catch((err) => console.error("[ji-theme] package apply failed:", err)); },
+        savePackageOverrides: async (id, theme) => {
+          const payload = Object.assign({}, theme);
+          delete payload.packageId;
+          delete payload.hasOverrides;
+          await savePackageOverridesRemote(id, { theme: payload });
+          await loadPackages();
+          registerThemes();
+          applyBackground();
+          applyThemeCss();
+        },
+        resetPackageOverrides: async (id) => {
+          const previous = await fetchPackageOverrides(id).catch(() => null);
+          if (previous && previous.theme && typeof previous.theme.background === "string") deleteWallpaperFile(previous.theme.background);
+          await resetPackageOverridesRemote(id);
+          await loadPackages();
+          registerThemes();
+          applyBackground();
+          applyThemeCss();
+        },
+        deletePackage: async (pkg) => {
+          await deletePackageRemote(pkg.id);
+          await loadPackages();
+          registerThemes();
+          if (activePackageId === pkg.id) await applyPackage(null);
+        },
+        loadPackages: () => loadPackages(),
+        getPackages: () => getPackagesState(),
+        subscribePackages: (fn) => subscribePackages(fn),
+        getActivePackage: () => activePackageId,
       };
       const ThemeSection = () => React.createElement(ThemeRow, Object.assign({ t: ctx.locale.bind(SETTINGS_NS) }, themeActions));
+      ctx.effect(() => registerSettingsNavIcon(() => ctx.locale.bind(SETTINGS_NS)("ji-theme.title")), "ji-theme: settings navigation icon");
       ctx.slots.inject("settings.section", () => ctx.slots.register({
         name: "settings.section",
         id: "ji-theme",

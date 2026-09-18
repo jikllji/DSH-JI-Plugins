@@ -48,11 +48,24 @@ import {
   parseName,
   validateUpload,
 } from './contract.js';
+import {
+  PACKAGES_PREFIX,
+  MAX_PACKAGE_UPLOAD_BYTES,
+  importPackage,
+  listPackages,
+  removePackage,
+  resolvePackageAsset,
+  exportPath,
+  readPackageOverrides,
+  writePackageOverrides,
+  removePackageOverrides,
+} from './store.js';
 
 export const inject = ['webServer'];
 
 const PLUGIN_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 const WALLPAPER_DIR = join(PLUGIN_DIR, 'wallpapers');
+const MAX_OVERRIDE_BYTES = 1024 * 1024;
 
 // Error envelope: { code, message }. code is the contract; message is the
 // fallback shown only when the browser's locale lacks a mapping (Q4-A).
@@ -104,6 +117,17 @@ function safeResolve(name) {
   const base = resolve(WALLPAPER_DIR);
   const file = resolve(base, name);
   return file.startsWith(base + '\\') || file.startsWith(base + '/') ? file : null;
+}
+
+function serveFile(res, file, mime, disposition, size) {
+  const headers = {
+    'Content-Type': mime,
+    'Cache-Control': 'no-store',
+  };
+  if (disposition !== undefined) headers['Content-Disposition'] = disposition;
+  if (size !== undefined) headers['Content-Length'] = size;
+  res.writeHead(200, headers);
+  createReadStream(file).pipe(res);
 }
 
 export function apply(ctx) {
@@ -189,4 +213,91 @@ export function apply(ctx) {
       sendError(res, 'METHOD_NOT_ALLOWED');
     },
   }), 'ji-theme.wallpapers');
+
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'prefix',
+    path: PACKAGES_PREFIX,
+    handler: async (req, res) => {
+      const method = (req.method || 'GET').toUpperCase();
+      let pathname = '/';
+      try { pathname = new URL(req.url || '/', 'http://localhost').pathname; } catch {}
+      const rest = pathname.slice(PACKAGES_PREFIX.length);
+
+      if (method === 'GET' && (rest === '' || rest === '/')) {
+        sendJson(res, 200, { version: 1, packages: await listPackages() });
+        return;
+      }
+
+      if (method === 'POST' && (rest === '' || rest === '/')) {
+        if (!isLocalHost(req.headers.host) || !isLocalOrigin(req.headers.origin)) { sendError(res, 'FORBIDDEN'); return; }
+        let body;
+        try { body = await readBody(req, MAX_PACKAGE_UPLOAD_BYTES + 1); }
+        catch { sendJson(res, 413, { code: 'TOO_LARGE', message: 'package too large' }); return; }
+        let filename = '';
+        try { filename = decodeURIComponent(String(req.headers['x-ji-filename'] || '')); } catch {}
+        try {
+          const meta = await importPackage(body, { filename });
+          sendJson(res, 200, { package: meta });
+        } catch (error) {
+          sendJson(res, 400, { code: 'BAD_PACKAGE', message: error && error.message ? error.message : 'invalid package' });
+        }
+        return;
+      }
+
+      const parts = rest.replace(/^\/+/, '').split('/');
+      const id = parts.shift();
+      if (!id) { sendError(res, 'NOT_FOUND'); return; }
+
+      if (method === 'DELETE' && parts.length === 0) {
+        if (!isLocalHost(req.headers.host) || !isLocalOrigin(req.headers.origin)) { sendError(res, 'FORBIDDEN'); return; }
+        const removed = await removePackage(id);
+        if (!removed) { sendError(res, 'NOT_FOUND'); return; }
+        res.writeHead(204); res.end();
+        return;
+      }
+
+      if (method === 'GET' && parts.length === 1 && parts[0] === 'export') {
+        const file = await exportPath(id);
+        if (file === null) { sendError(res, 'NOT_FOUND'); return; }
+        serveFile(res, file, 'application/zip', `attachment; filename="${id}.zip"`);
+        return;
+      }
+
+      if (method === 'GET' && parts[0] === 'files') {
+        const asset = await resolvePackageAsset(id, parts.slice(1).join('/'));
+        if (asset === null) { sendError(res, 'NOT_FOUND'); return; }
+        serveFile(res, asset.file, asset.mime, undefined, asset.size);
+        return;
+      }
+
+      if (parts.length === 1 && parts[0] === 'overrides') {
+        if (method === 'GET') {
+          const overrides = await readPackageOverrides(id);
+          if (overrides === null) { sendError(res, 'NOT_FOUND'); return; }
+          sendJson(res, 200, { overrides });
+          return;
+        }
+        if (!isLocalHost(req.headers.host) || !isLocalOrigin(req.headers.origin)) { sendError(res, 'FORBIDDEN'); return; }
+        if (method === 'PUT') {
+          let body;
+          try { body = await readBody(req, MAX_OVERRIDE_BYTES + 1); }
+          catch { sendJson(res, 413, { code: 'TOO_LARGE', message: 'override too large' }); return; }
+          let payload = null;
+          try { payload = JSON.parse(body.toString('utf8')); } catch {}
+          const written = await writePackageOverrides(id, payload);
+          if (!written) { sendError(res, 'NOT_FOUND'); return; }
+          sendJson(res, 200, { ok: true });
+          return;
+        }
+        if (method === 'DELETE') {
+          const removed = await removePackageOverrides(id);
+          if (!removed) { sendError(res, 'NOT_FOUND'); return; }
+          res.writeHead(204); res.end();
+          return;
+        }
+      }
+
+      sendError(res, 'NOT_FOUND');
+    },
+  }), 'ji-theme.packages');
 }
