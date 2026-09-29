@@ -1,0 +1,4 @@
+# ji-skills bundle layer: mount the skills settings section into the web profile.
+- insert:
+    - id: ji-skills
+      name: 'ji-skills'
