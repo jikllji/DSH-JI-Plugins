@@ -24,11 +24,10 @@ __DROP_LOGIC_INLINE__
       "ji-filable.drag.noSession": "请先打开一个会话，再拖入文件",
       "ji-filable.drag.noWorkspace": "无法确定会话工作区，文件未保存",
       "ji-filable.drag.done": "已上传 {count} 个文件到工作区 sessionfiles",
-      "ji-filable.drag.mixedDone": "已上传 {count} 个文件（{img} 张图片已跳过，请单独拖入以使用视觉流程）",
       "ji-filable.drag.partial": "上传完成 {ok} 个，失败: {err}",
-      "ji-filable.dropHint.title": "拖入文件",
+      "ji-filable.dropHint.title": "拖入图片或文件",
       "ji-filable.dropHint.desc": "松开即保存到工作区 sessionfiles",
-      "ji-filable.dropHint.noSession": "先打开一个会话，再拖入文件",
+      "ji-filable.dropHint.noSession": "先打开一个会话，再拖入图片或文件",
     };
     var en = {
       "ji-filable.chip.uploading": "Uploading",
@@ -39,11 +38,10 @@ __DROP_LOGIC_INLINE__
       "ji-filable.drag.noSession": "Open a session before dropping files",
       "ji-filable.drag.noWorkspace": "Session workspace unknown — file not saved",
       "ji-filable.drag.done": "Uploaded {count} file(s) to workspace sessionfiles",
-      "ji-filable.drag.mixedDone": "Uploaded {count} file(s) ({img} image(s) skipped — drop images alone to use the vision flow)",
       "ji-filable.drag.partial": "Uploaded {ok}, failed: {err}",
-      "ji-filable.dropHint.title": "Drop files",
+      "ji-filable.dropHint.title": "Drop images or files",
       "ji-filable.dropHint.desc": "Release to save into workspace sessionfiles",
-      "ji-filable.dropHint.noSession": "Open a session before dropping files",
+      "ji-filable.dropHint.noSession": "Open a session before dropping images or files",
     };
 
     // ── toast store (subscribeStore; timers tracked for fiber cleanup) ─────
@@ -87,13 +85,12 @@ __DROP_LOGIC_INLINE__
       chips.set(chips.get().filter(function (chip) { return chip.id !== id; }));
     }
 
-    // ── drop hint store (full-viewport overlay while dragging non-images) ──
+    // ── drop hint store (full-viewport overlay while dragging any file) ───
+    // Same look as the built-in composer overlay (DropOverlay.module.css +
+    // its two illustrations), so a drop reads identically whichever half
+    // would have taken it. Styles live in HINT_CSS, injected below.
     var dropHint = subscribeStore({ visible: false, disabled: false });
     var dropHintDepth = 0;
-    var HINT_MASK = { position: "fixed", inset: "0", zIndex: "1000", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", backgroundColor: "var(--dsw-alias-bg-mask-drop)", backdropFilter: "blur(10px)", animation: "dshHintFade 160ms ease-out" };
-    var HINT_WRAP = { display: "flex", flexDirection: "column", alignItems: "center", marginTop: "-3%", padding: "0 40px", color: "var(--dsw-alias-label-primary)", textAlign: "center" };
-    var HINT_TITLE = { marginTop: "16px", fontSize: "20px", lineHeight: "28px" };
-    var HINT_DESC = { marginTop: "16px", fontSize: "14px", lineHeight: "18px", color: "var(--dsw-alias-label-tertiary)", whiteSpace: "pre-wrap" };
     function showDropHint(disabled) { dropHint.set({ visible: true, disabled: Boolean(disabled) }); }
     function hideDropHint() { dropHintDepth = 0; dropHint.set({ visible: false, disabled: false }); }
     function DropHintOverlay(props) {
@@ -103,32 +100,32 @@ __DROP_LOGIC_INLINE__
       var setValue = state[1];
       React.useEffect(function () { return dropHint.subscribe(setValue); }, []);
       if (!value.visible) return null;
-      return React.createElement("div", { style: HINT_MASK },
-        React.createElement("div", { style: HINT_WRAP },
-          value.disabled ? React.createElement(FileIconDisabled, null) : React.createElement(FileIcon, null),
-          React.createElement("div", { style: HINT_TITLE }, value.disabled ? t("ji-filable.dropHint.noSession") : t("ji-filable.dropHint.title")),
-          value.disabled ? null : React.createElement("div", { style: HINT_DESC }, t("ji-filable.dropHint.desc")),
+      var illustration = value.disabled ? HINT_ILLUSTRATION_BLOCKED : HINT_ILLUSTRATION;
+      return React.createElement("div", { className: "ji-filable-hint-mask", role: "status" },
+        React.createElement("div", { className: "ji-filable-hint-wrap" },
+          React.createElement("div", {
+            className: "ji-filable-hint-illustration",
+            "aria-hidden": "true",
+            dangerouslySetInnerHTML: { __html: illustration },
+          }),
+          React.createElement("div", { className: "ji-filable-hint-title" }, value.disabled ? t("ji-filable.dropHint.noSession") : t("ji-filable.dropHint.title")),
+          value.disabled ? null : React.createElement("div", { className: "ji-filable-hint-desc" }, t("ji-filable.dropHint.desc")),
         ));
     }
-    // File-with-upload-arrow icon (theme-neutral tints, distinct from the
-    // composer's image-card illustration).
-    function FileIcon() {
-      return React.createElement("svg", { width: "115", height: "84", viewBox: "0 0 115 84", fill: "none" },
-        React.createElement("rect", { x: "26", y: "10", width: "46", height: "54", rx: "9", fill: "#679EFE" }),
-        React.createElement("rect", { x: "36", y: "22", width: "26", height: "4", rx: "2", fill: "#fff" }),
-        React.createElement("rect", { x: "36", y: "32", width: "26", height: "4", rx: "2", fill: "#fff" }),
-        React.createElement("circle", { cx: "74", cy: "56", r: "20", fill: "#9CE5ED" }),
-        React.createElement("path", { d: "M74 64V50M69 55l5-5 5 5", stroke: "#fff", strokeWidth: "3", strokeLinecap: "round", strokeLinejoin: "round" }));
-    }
-    function FileIconDisabled() {
-      return React.createElement("svg", { width: "115", height: "84", viewBox: "0 0 115 84", fill: "none" },
-        React.createElement("rect", { x: "26", y: "10", width: "46", height: "54", rx: "9", fill: "#979DA6" }),
-        React.createElement("rect", { x: "36", y: "22", width: "26", height: "4", rx: "2", fill: "#fff" }),
-        React.createElement("circle", { cx: "74", cy: "56", r: "20", fill: "#F59E0B" }),
-        React.createElement("path", { d: "M64 46l20 20", stroke: "#fff", strokeWidth: "3.5", strokeLinecap: "round" }));
-    }
-
-    function ToastStack(props) {
+    // The built-in overlay's two illustrations (115x84), inlined as markup so
+    // the component above stays a plain createElement tree. Clip id is renamed
+    // so it can coexist with the official one.
+    var HINT_ILLUSTRATION = '<svg width="115" height="84" viewBox="0 0 115 84" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#jiFilableHintClip)"><rect y="17.0742" width="44.1832" height="43.6431" rx="12" transform="rotate(-22.7338 0 17.0742)" fill="#9CE5ED"/><rect x="73.4043" y="8.54297" width="43.7267" height="50.5284" rx="8" transform="rotate(17.403 73.4043 8.54297)" fill="#679EFE"/><path d="M30.4917 28.1369L40.8865 33.4564L37.2232 34.9524L29.5302 31.0159L26.7919 39.2122L23.1285 40.7082L26.8287 29.6338L16.8967 24.5516L20.5601 23.0556L27.7902 26.7549L30.3639 19.052L34.0273 17.556L30.4917 28.1369Z" fill="white"/><path d="M77.5088 26.3047L101.057 33.7966" stroke="white" stroke-width="3"/><path d="M72.2646 42.7871L86.3938 47.2823" stroke="white" stroke-width="3"/><path d="M74.8867 34.5469L98.4353 42.0388" stroke="white" stroke-width="3"/><rect x="31.583" y="38.6641" width="44.9157" height="44.3666" rx="12" transform="rotate(-0.134233 31.583 38.6641)" fill="#3964FE"/><path d="M38.9521 73.0337C39.6129 71.7086 41.7113 66.0937 43.5113 61.1663C44.1607 59.3885 46.7484 59.3923 47.4591 61.1465C48.9728 64.8828 50.7969 68.6922 51.9988 69.1925C54.2946 70.1482 57.9854 59.3573 68.0064 70.1801" stroke="white" stroke-width="3"/><circle cx="60.6157" cy="52.247" r="4.38794" transform="rotate(22.5996 60.6157 52.247)" fill="white"/></g><defs><clipPath id="jiFilableHintClip"><rect width="115" height="84" fill="white"/></clipPath></defs></svg>';
+    var HINT_ILLUSTRATION_BLOCKED = '<svg width="115" height="84" viewBox="0 0 115 84" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M29.6829 4.63701L11.0677 12.4368C4.95519 14.998 2.07624 22.0294 4.6374 28.1419L12.2285 46.259C14.7896 52.3715 21.8211 55.2505 27.9336 52.6893L46.5488 44.8895C52.6613 42.3283 55.5403 35.2969 52.9791 29.1844L45.388 11.0673C42.8269 4.9548 35.7954 2.07585 29.6829 4.63701Z" fill="#979DA6"/><path d="M30.4915 28.1375L40.8863 33.4569L37.223 34.9529L29.53 31.0165L26.7917 39.2128L23.1283 40.7088L26.8285 29.6344L16.8965 24.5522L20.5599 23.0562L27.79 26.7555L30.3637 19.0526L34.0271 17.5566L30.4915 28.1375Z" fill="white"/><path d="M107.496 19.2285L81.0381 10.9357C76.8221 9.61423 72.333 11.9607 71.0116 16.1768L60.6844 49.1246C59.363 53.3406 61.7095 57.8297 65.9255 59.1511L92.383 67.4439C96.599 68.7654 101.088 66.4189 102.41 62.2029L112.737 29.255C114.058 25.039 111.712 20.55 107.496 19.2285Z" fill="#979DA6"/><path d="M77.5088 26.3047L101.057 33.7967" stroke="white" stroke-width="3"/><path d="M72.2646 42.7871L86.3938 47.2823" stroke="white" stroke-width="3"/><path d="M74.8867 34.5469L98.4353 42.0388" stroke="white" stroke-width="3"/><path d="M66.5798 30.1418L41.481 30.2006C33.5281 30.2193 27.0962 36.6815 27.1148 44.6343L27.172 69.0742C27.1907 77.0271 33.6529 83.459 41.6057 83.4404L66.7045 83.3816C74.6574 83.363 81.0894 76.9008 81.0707 68.9479L81.0135 44.5081C80.9949 36.5552 74.5327 30.1232 66.5798 30.1418Z" fill="#F59E0B"/><path d="M54 70.7969C61.732 70.7969 68 64.5289 68 56.7969C68 49.0649 61.732 42.7969 54 42.7969C46.268 42.7969 40 49.0649 40 56.7969C40 64.5289 46.268 70.7969 54 70.7969Z" stroke="white" stroke-width="3.5"/><path d="M44 46.7969L64 66.7969" stroke="white" stroke-width="3.5" stroke-linecap="round"/></svg>';
+    // Built-in overlay's stylesheet (DropOverlay.module.css), scoped to our
+    // own class names; `pointer-events: none` keeps drag targeting below.
+    var HINT_CSS = ".ji-filable-hint-mask{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;pointer-events:none;background-color:var(--dsw-alias-bg-mask-drop);backdrop-filter:blur(10px);animation:jiFilableHintFade 160ms ease-out}"
+      + "@keyframes jiFilableHintFade{from{opacity:0}to{opacity:1}}"
+      + "@media (prefers-reduced-motion: reduce){.ji-filable-hint-mask{animation:none}}"
+      + ".ji-filable-hint-wrap{display:flex;flex-direction:column;align-items:center;margin-top:-3%;padding:0 40px;color:var(--dsw-alias-label-primary);text-align:center}"
+      + ".ji-filable-hint-illustration{width:115px;height:84px}"
+      + ".ji-filable-hint-title{margin-top:16px;font:var(--dsw-font-l-20)}"
+      + ".ji-filable-hint-desc{margin-top:16px;font:var(--dsw-font-s-14);color:var(--dsw-alias-label-tertiary);white-space:pre-wrap}";    function ToastStack(props) {
       var t = props.t;
       var state = React.useState(toasts.get());
       var items = state[0];
@@ -307,14 +304,12 @@ __DROP_LOGIC_INLINE__
       });
       if (hasDirectory) return Promise.resolve(); // directories are silently ignored
       var plan = planUploads(Array.from(dataTransfer.files || []));
-      if (plan.takeOver.length === 0) return Promise.resolve(); // pure whitelisted images → existing flow
       var t = ctx.locale.bind(NS);
       var sid = getCurrentSession(sessions);
       if (sid === undefined || sid === "") {
         toast(t("ji-filable.drag.noSession"), false);
         return Promise.resolve();
       }
-      var skippedImages = plan.skippedImages;
       var okCount = 0;
       var errors = [];
       var workspaceUnknown = false;
@@ -334,9 +329,7 @@ __DROP_LOGIC_INLINE__
       });
       return chain.then(function () {
         if (errors.length === 0) {
-          toast(skippedImages > 0
-            ? t("ji-filable.drag.mixedDone", { count: okCount, img: skippedImages })
-            : t("ji-filable.drag.done", { count: okCount }), true);
+          toast(t("ji-filable.drag.done", { count: okCount }), true);
         } else if (workspaceUnknown && errors.length === plan.takeOver.length) {
           toast(t("ji-filable.drag.noWorkspace"), false);
         } else {
@@ -347,18 +340,12 @@ __DROP_LOGIC_INLINE__
 
     function attachDrop(ctx) {
       var sessions = ctx.sessions;
-      // Suppress the composer's image-only drop hint for non-image drags when
-      // item types are visible; drop-time classification via files is final.
-      function suppressNonImage(dataTransfer) {
-        var types = dragTypes(dataTransfer);
-        if (types.length === 0) return false;
-        return classifyBatch(types) !== "all-images";
-      }
+      // Every file drag is taken over — images included — so the composer's
+      // own overlay never appears and only our hint shows.
       function currentSessionId() { return getCurrentSession(sessions); }
       function onDragEnter(event) {
         if (!isFileDrag(event.dataTransfer)) return;
         event.preventDefault();
-        if (!suppressNonImage(event.dataTransfer)) return; // images/unknown → composer hint
         dropHintDepth += 1;
         var sid = currentSessionId();
         showDropHint(sid === undefined || sid === "");
@@ -368,7 +355,6 @@ __DROP_LOGIC_INLINE__
         if (!isFileDrag(event.dataTransfer)) return;
         event.preventDefault();
         if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
-        if (!suppressNonImage(event.dataTransfer)) return;
         var sid = currentSessionId();
         showDropHint(sid === undefined || sid === "");
         event.stopPropagation();
@@ -385,9 +371,6 @@ __DROP_LOGIC_INLINE__
       }
       function onDrop(event) {
         if (!isFileDrag(event.dataTransfer)) return;
-        var files = Array.from(event.dataTransfer.files || []);
-        var batch = classifyBatch(files.map(function (file) { return file.type; }));
-        if (batch === "all-images") return; // existing flow handles it
         event.preventDefault();
         event.stopPropagation();
         hideDropHint();
@@ -428,7 +411,7 @@ __DROP_LOGIC_INLINE__
       // Inject the fade keyframes used by the drop hint mask (reversible).
       ctx.effect(function () {
         var style = document.createElement("style");
-        style.textContent = "@keyframes dshHintFade { from { opacity: 0; } to { opacity: 1; } }";
+        style.textContent = HINT_CSS;
         document.head.appendChild(style);
         return function () { document.head.removeChild(style); };
       }, "ji-filable: hint css");
