@@ -10,6 +10,7 @@ Personal plugins for DSH.
 | --- | --- |
 | [ji-theme](ji-theme/README.md) | A DSH-DreamSkin theme adapter plugin: brings Codex themes to DSH, theme library: https://dreamskin.cc/ |
 | [ji-filable](ji-filable/README.md) | A file-upload plugin: drag any non-image file into chat and it is stored losslessly under its original name in the session workspace's `sessionfiles/`, readable by the agent |
+| [ji-skills](ji-skills/README.md) | A built-in-style Skills plugin: lists the skills installed on this deployment by source in Settings, read-only, with cards matching dsh's built-in plugin-inventory page |
 
 ## Installing a plugin
 
