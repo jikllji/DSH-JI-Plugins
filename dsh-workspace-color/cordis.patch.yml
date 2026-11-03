@@ -1,0 +1,4 @@
+# dsh-workspace-color patch —— 在 Loader 里登记本插件。
+- insert:
+    - id: dsh-workspace-color
+      name: 'dsh-workspace-color'
