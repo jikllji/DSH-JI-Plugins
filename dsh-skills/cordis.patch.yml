@@ -1,0 +1,4 @@
+# dsh-skills bundle layer: mount the skills settings section into the web profile.
+- insert:
+    - id: dsh-skills
+      name: 'dsh-skills'
