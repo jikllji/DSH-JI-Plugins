@@ -1,0 +1,603 @@
+/* ===========================================================================
+ * dsh-workspace-color 设置页
+ * 命名空间 ws-；只依赖 DSH 主题变量，深浅主题自动跟随。
+ * 结构：页头 → 预览 → 配色 → 标记
+ * ========================================================================= */
+
+
+.ws-set {
+  /* 当前调色（色相槽位 0）的主色，滑杆 / 开关 / 色点共用这一支 */
+  --ws-tint: #b0679f;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 564px;
+  margin: 0 auto;
+  color: var(--dsw-alias-label-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------- 页头 ---------------- */
+.ws-set-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 2px;
+}
+.ws-set-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-set-title {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+.ws-set-sub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* ---------------- 卡片 ---------------- */
+.ws-card {
+  padding: 14px 15px 15px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 14px;
+  background: var(--dsw-alias-bg-module-platform);
+}
+.ws-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.ws-card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-secondary);
+}
+.ws-card-note {
+  flex: none;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* 关闭插件后整块变淡并失去交互（页头开关留在外面，始终可点） */
+.ws-set[data-enabled='false'] .ws-body {
+  opacity: 0.42;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ds-ease-in-out);
+}
+
+/* ---------------- 开关 ---------------- */
+.ws-toggle {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.ws-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+}
+.ws-toggle-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 15%, transparent);
+  transition: background 0.18s var(--ds-ease-in-out);
+}
+.ws-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--dsw-alias-switch-thumb, #fff);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
+  transition: transform 0.18s var(--ds-ease-in-out);
+}
+.ws-toggle input:checked + .ws-toggle-track {
+  background: var(--dsw-alias-brand-primary);
+}
+.ws-toggle input:checked + .ws-toggle-track .ws-toggle-thumb {
+  transform: translateX(14px);
+}
+.ws-toggle input:focus-visible + .ws-toggle-track {
+  outline: 2px solid var(--dsw-alias-link, #4d6bfe);
+  outline-offset: 2px;
+}
+/* 行内开关的文字只留给读屏：行标题已经说明了它管什么，页头那个除外 */
+.ws-toggle-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ws-set-head .ws-toggle-label {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* ---------------- 分段控件 ---------------- */
+.ws-seg {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+}
+.ws-seg-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  height: calc(100% - 4px);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-base);
+  box-shadow: var(--dsw-shadow-lv1);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ws-seg[data-index='1'] .ws-seg-thumb {
+  transform: translateX(100%);
+}
+/* 深色主题下换成亮一档的表面，否则拇指会陷进轨道里 */
+body[data-ds-dark-theme] .ws-seg-thumb {
+  background: var(--dsw-static-neutral-bluish-800, #353538);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.ws-seg-btn {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 2px 12px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  transition: color 0.15s var(--ds-ease-in-out);
+}
+.ws-seg-btn.is-active {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* ---------------- 侧栏预览 ---------------- */
+.ws-prev {
+  --pv-bg: #f9fafb;
+  --pv-label: #26282c;
+  --pv-dim: #6d7177;
+  --pv-folder: #9aa0a6;
+  position: relative;
+  padding: 7px 8px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 11px;
+  background: var(--pv-bg);
+  overflow: hidden;
+  transition: background 0.25s var(--ds-ease-in-out);
+}
+.ws-prev[data-mode='dark'] {
+  --pv-bg: #1b1b1c;
+  --pv-label: #e9eaec;
+  --pv-dim: #9aa0a6;
+  --pv-folder: #7a7f86;
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+.ws-pblk {
+  --pv-mix: calc((var(--pv-base, 6) + var(--pv-step, 3) * var(--pv-d, 0)) * 1%);
+  --pv-inset: calc(10px * var(--pv-d, 0));
+  margin-inline: var(--pv-inset);
+  border-radius: max(6px, calc(12px - 2px * var(--pv-d, 0)));
+  background: color-mix(in srgb, var(--pv-hue, transparent) var(--pv-mix), var(--pv-bg));
+  transition: background 0.28s var(--ds-ease-in-out);
+}
+/* 深度 → 内缩 / 浓度，与真实侧栏的 --ws-depth 一一对应 */
+.ws-pblk[data-d='0'] {
+  --pv-d: 0;
+}
+.ws-pblk[data-d='1'] {
+  --pv-d: 1;
+}
+.ws-pblk[data-d='2'] {
+  --pv-d: 2;
+}
+.ws-pblk[data-d='3'] {
+  --pv-d: 3;
+}
+.ws-pblk[data-d='4'] {
+  --pv-d: 4;
+}
+.ws-pblk + .ws-pblk {
+  margin-top: 2px;
+}
+/* 同层相邻色块之间留一条缝，仍成组 */
+.ws-pblk[data-d='0'] + .ws-pblk[data-d='0'] {
+  margin-top: 6px;
+}
+.ws-prow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding-inline: 7px;
+  font-size: 12px;
+  line-height: 22px;
+  color: var(--pv-label);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-prow-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-prow-caret {
+  flex: none;
+  display: inline-flex;
+  width: 9px;
+  height: 9px;
+  color: var(--pv-dim);
+  opacity: 0.9;
+}
+.ws-prow-caret svg {
+  width: 9px;
+  height: 9px;
+}
+.ws-prow-icon {
+  flex: none;
+  display: inline-flex;
+  width: 12px;
+  height: 12px;
+  color: var(--pv-folder);
+}
+.ws-prow-icon svg {
+  width: 12px;
+  height: 12px;
+}
+/* 工作区行：图标与名称吃身份色（已按明度 / 饱和度重算） */
+.ws-prow[data-identity] {
+  color: var(--pv-hue);
+}
+.ws-prow[data-identity] .ws-prow-icon {
+  color: var(--pv-hue);
+}
+/* 会话行：内缩一级、压暗，不参与配色 */
+.ws-prow--session {
+  padding-inline-start: 22px;
+  color: var(--pv-dim);
+}
+.ws-prow--session::before {
+  content: '';
+  flex: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+  margin-inline-end: 2px;
+}
+.ws-prow--current,
+.ws-prow--current.ws-prow--session {
+  color: var(--ws-current-title, #d92b2b);
+}
+.ws-prev[data-mode='dark'] .ws-prow--current {
+  color: #ff6b6b;
+}
+/* 关掉「标题标红」时，预览里的当前会话退回普通文字色 */
+.ws-prev[data-title-red='false'] .ws-prow--current,
+.ws-prev[data-title-red='false'] .ws-prow--current.ws-prow--session {
+  color: var(--pv-dim);
+}
+/* 关闭插件后预览退化为无色底 */
+.ws-set[data-enabled='false'] .ws-pblk {
+  background: transparent;
+}
+.ws-set[data-enabled='false'] .ws-prow[data-identity] {
+  color: var(--pv-label);
+}
+.ws-set[data-enabled='false'] .ws-prow[data-identity] .ws-prow-icon {
+  color: var(--pv-folder);
+}
+
+/* ---------------- 两列（分隔线由伪元素画，不被 gap 截断） ---------------- */
+.ws-cols {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 22px;
+}
+.ws-cols::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  bottom: 3px;
+  width: 0.5px;
+  background: var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.06));
+}
+.ws-col {
+  min-width: 0;
+}
+.ws-col-title {
+  font-size: 11.5px;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  color: var(--dsw-alias-label-tertiary);
+  margin-bottom: 1px;
+}
+
+/* ---------------- 滑杆 ---------------- */
+.ws-slider {
+  padding: 4px 0 1px;
+}
+.ws-slider + .ws-slider {
+  padding-top: 3px;
+}
+.ws-slider-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 1px;
+}
+.ws-slider-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+.ws-slider-value {
+  flex: none;
+  font-size: 11.5px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-secondary);
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+}
+.ws-slider-hint {
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  margin-bottom: 4px;
+}
+
+/* 已填充部分由 --fill 控制，深浅主题共用一条轨道 */
+.ws-range {
+  --fill: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.ws-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--ws-tint) var(--fill),
+    color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent) var(--fill)
+  );
+}
+.ws-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+}
+.ws-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ws-tint);
+}
+.ws-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.12s var(--ds-ease-in-out);
+}
+.ws-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.ws-range:hover::-webkit-slider-thumb {
+  transform: scale(1.08);
+}
+.ws-range:active::-webkit-slider-thumb {
+  transform: scale(1.16);
+}
+.ws-range:focus-visible {
+  outline: none;
+}
+.ws-range:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--dsw-alias-link, #4d6bfe);
+  outline-offset: 1px;
+}
+
+/* ---------------- 色相槽位 ---------------- */
+.ws-hues {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+.ws-hues-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.ws-hue-dots {
+  display: flex;
+  gap: 7px;
+  flex: none;
+}
+.ws-hue-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.28);
+  transition: background 0.28s var(--ds-ease-in-out);
+}
+
+/* ---------------- 行（标记 / 覆盖） ---------------- */
+.ws-rows {
+  display: flex;
+  flex-direction: column;
+}
+.ws-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+  padding: 4px 0;
+}
+.ws-rows--list .ws-row + .ws-row {
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+}
+.ws-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-row-label {
+  font-size: 13px;
+  line-height: 20px;
+}
+.ws-row-desc {
+  margin-top: 1px;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* ---------------- 按钮 ---------------- */
+.ws-btn {
+  appearance: none;
+  flex: none;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  transition: background 0.15s var(--ds-ease-in-out), color 0.15s var(--ds-ease-in-out);
+}
+.ws-btn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.ws-btn--quiet {
+  border-color: transparent;
+}
+.ws-btn--danger:hover {
+  color: var(--dsw-alias-state-error-primary);
+}
+.ws-btn[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+.ws-btn[disabled]:hover {
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* ---------------- 取色圆点 ---------------- */
+.ws-swatch {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  /* 未自定义时显示主题原生的图钉色 */
+  background: var(--dsw-alias-label-caption);
+  box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.3);
+  cursor: pointer;
+  overflow: hidden;
+}
+.ws-swatch input {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+.ws-swatch-code {
+  flex: none;
+  font-size: 11.5px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-tertiary);
+  min-width: 58px;
+}
+.ws-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+/* 覆盖数小徽标 */
+  flex: none;
+  min-width: 18px;
+  padding: 0 5px;
+  height: 18px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-secondary);
+}

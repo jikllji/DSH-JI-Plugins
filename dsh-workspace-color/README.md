@@ -10,7 +10,7 @@
 
 全部设置都在 **设置 → 侧边栏配色** 里。
 
-> 版本 **0.10.0** · 目标 DSH **0.2.1-rc.2** · MIT · 纯展示层，不改动任何数据
+> 版本 **1.0.0** · 目标 DSH **0.2.1-rc.2** · MIT · 纯展示层，不改动任何数据
 >
 > 颜色算法参考 `https://github.com/lsb0554/dsh-sidebar-color`
 
@@ -31,7 +31,7 @@
 
 ## 安装
 
-插件在 DSH 里以 bundle 形式挂进某个 profile。下面以 `web` profile 为例，profile 目录是 `C:\Users\Jikll\.dsh\profiles\web`。
+插件在 DSH 里以 bundle 形式挂进某个 profile。下面以 `web` profile 为例，profile 目录是 `%USERPROFILE%\.dsh\profiles\web`。
 
 ### 一键脚本（Windows）
 
@@ -44,11 +44,11 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -Profile desktop
 
 ### 手动安装
 
-1. 源目录放到 `C:\Users\Jikll\Desktop\dsh-temp-work\dsh-workspace-color`（或任意固定位置）。
-2. 编辑 profile 的 `package.json`，在 `dependencies` 加：
+1. 把插件目录放到任意固定位置（例如 `D:\plugins\dsh-workspace-color`），**不要放在会被清理的临时目录**——profile 的依赖是以路径登记的。
+2. 编辑 profile 的 `package.json`，在 `dependencies` 加（路径换成你自己的）：
 
    ```json
-   "dsh-workspace-color": "file:C:/Users/Jikll/Desktop/dsh-temp-work/dsh-workspace-color"
+   "dsh-workspace-color": "file:D:/plugins/dsh-workspace-color"
    ```
 
    在 `dsh.profile.bundles` 数组里加：
@@ -114,26 +114,39 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -Profile desktop
 
 `client.js` 是浏览器侧静态 bundle，**改完必须刷新页面**才会加载新代码；宿主的 `patchReload: 'live'` 只覆盖 `index.js`。
 
+插件是自包含的：设置页源码在 `src/`，构建脚本在 `scripts/`，不依赖插件目录以外的任何文件。
+
+### 源码与构建
+
+设置页那两段由 `src/` 生成，**不要直接改 `client.js` 里的对应区块**（下次构建会被覆盖）：
+
+| 源文件 | 生成到 `client.js` 的位置 |
+| --- | --- |
+| `src/settings.css` | `const SETTINGS_CSS` 常量 |
+| `src/settings-section.js` | 「设置页分区（React）」注释头到 `function apply(ctx)` 之间的区段 |
+
+```powershell
+node scripts/build.mjs          # 写入 client.js
+node scripts/build.mjs --check  # 只校验是否同步（改了 src 忘了构建时退出码 1）
+node --check client.js          # 语法检查
+```
+
 ### 两份副本
 
 | 位置 | 作用 |
 | --- | --- |
-| 本仓库（`dsh-workspace-color/`） | 开发的源文件 |
-| `C:\Users\Jikll\.dsh\profiles\web\node_modules\dsh-workspace-color\` | DSH 实际加载的副本 |
+| 本仓库 | 源文件（唯一真源） |
+| `%USERPROFILE%\.dsh\profiles\web\node_modules\dsh-workspace-color\` | DSH 实际加载的副本（`file:` 依赖在 `pnpm install` 时复制） |
 
-改完 `client.js` 后：
+改完 `client.js` 后同步副本，再在页面里 Ctrl+R：
 
 ```powershell
-node --check client.js
-Copy-Item .\client.js   "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-workspace-color\client.js" -Force
-Copy-Item .\package.json "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-workspace-color\package.json" -Force
+Copy-Item .\client.js, .\package.json "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-workspace-color\" -Force
 ```
-
-然后在页面里 Ctrl+R。
 
 ### 自检
 
-- `node --check client.js` 通过；
+- `node scripts/build.mjs --check` 通过；`node --check client.js` 通过；
 - 安装副本与源文件 hash 一致；
 - 刷新后「设置 → 侧边栏配色」在，色块与颜料板图标正常。
 
@@ -158,20 +171,26 @@ Copy-Item .\package.json "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-wo
 
 ```
 dsh-workspace-color/
-├─ client.js          # 浏览器侧：色块/树/取色面板 + 设置页分区（约 2.0k 行）
-├─ index.js           # 宿主侧：空实现（只声明 name）
-├─ cordis.patch.yml   # bundle 补丁：把一个插件条目插进 profile
-├─ package.json       # 清单：dsh.bundle / dsh.client + 依赖
-├─ install.ps1        # Windows 一键安装
-├─ install.sh         # macOS / Linux 一键安装
-├─ README.md          # 中文（默认）
-├─ README.en.md       # 英文
+├─ client.js               # 构建产物：浏览器侧 bundle（色块/树/取色面板 + 设置页分区）
+├─ src/
+│  ├─ settings.css         # 设置页样式（命名空间 ws-，只读 DSH 主题令牌）
+│  └─ settings-section.js  # 设置页分区组件（React.createElement）
+├─ scripts/
+│  └─ build.mjs            # 把 src/ 两份源码拼进 client.js（支持 --check）
+├─ index.js                # 宿主侧：空实现（只声明 name）
+├─ cordis.patch.yml        # bundle 补丁：把一个插件条目插进 profile
+├─ package.json            # 清单：dsh.bundle / dsh.client + scripts.build
+├─ install.ps1             # Windows 一键安装
+├─ install.sh              # macOS / Linux 一键安装
+├─ README.md               # 中文（默认）
+├─ README.en.md            # 英文
 ├─ LICENSE
 └─ .gitattributes / .gitignore
 ```
 
 ## 变更记录
 
+- **1.0.0** — 首个稳定版：功能定型，设置页源码独立成文件（`src/`）并配 `scripts/build.mjs` 构建校验；仓库只保留插件本身的文件。
 - **0.10.0** — 设置页重做：页头标题 + 总开关、示例侧栏实时预览（可切浅色/深色，顺带决定「调色」在改哪个主题）、层级与调色两列并排、控件全部自绘并改用 DSH 主题令牌（深浅主题自动跟随）、插件停用时设置页仍有完整样式。设置项语义不变。
 - **0.9.1** — 元数据与文档整理：重写 README，清掉早期遗留截图与仓库指向。
 - **0.9.0** — 预设面板重做：12 个圆点 = 9 个色相锚点（统一明暗/饱和）+ 白/灰/黑；系统取色器默认按主题协调化（可关）；自动配色改为避背景色相 + 6 档均分；旧的手动颜色自动迁移。

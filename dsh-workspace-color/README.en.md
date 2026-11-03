@@ -10,7 +10,7 @@ Hover a workspace row and a palette icon appears left of the "⋯" — pin any c
 
 All settings live in **Settings → Sidebar colours**.
 
-> Version **0.10.0** · Targets DSH **0.2.1-rc.2** · MIT · presentation layer only, never touches data
+> Version **1.0.0** · Targets DSH **0.2.1-rc.2** · MIT · presentation layer only, never touches data
 >
 > Colour algorithm inspired by `https://github.com/lsb0554/dsh-sidebar-color`
 
@@ -31,7 +31,7 @@ All settings live in **Settings → Sidebar colours**.
 
 ## Install
 
-The plugin is a dsh bundle attached to a profile. The examples below use the `web` profile at `C:\Users\Jikll\.dsh\profiles\web`.
+The plugin is a dsh bundle attached to a profile. The examples below use the `web` profile at `%USERPROFILE%\.dsh\profiles\web`.
 
 ### One-shot script (Windows)
 
@@ -111,26 +111,39 @@ The background hue is measured once per theme when the plugin mounts; primary bu
 
 `client.js` is a static browser bundle — **reload the page** to load new code; the host's `patchReload: 'live'` only covers `index.js`.
 
+The plugin is self-contained: settings-page sources live in `src/` and the build script in `scripts/`. Nothing outside the plugin directory is required.
+
+### Sources and build
+
+The two settings-page chunks are generated from `src/` — **do not edit those regions in `client.js`** (the next build overwrites them):
+
+| Source | Lands in `client.js` as |
+| --- | --- |
+| `src/settings.css` | the `const SETTINGS_CSS` constant |
+| `src/settings-section.js` | the section between the "设置页分区（React）" header and `function apply(ctx)` |
+
+```powershell
+node scripts/build.mjs          # write client.js
+node scripts/build.mjs --check  # verify only; exits 1 when client.js lags behind src/
+node --check client.js          # syntax check
+```
+
 ### Two copies
 
 | Location | Role |
 | --- | --- |
-| This repository (`dsh-workspace-color/`) | development source |
-| `C:\Users\Jikll\.dsh\profiles\web\node_modules\dsh-workspace-color\` | the copy DSH actually loads |
+| This repository | source of truth |
+| `%USERPROFILE%\.dsh\profiles\web\node_modules\dsh-workspace-color\` | the copy DSH actually loads (`file:` deps are copied on `pnpm install`) |
 
-After editing `client.js`:
+After building, sync the copy and press Ctrl+R in the page:
 
 ```powershell
-node --check client.js
-Copy-Item .\client.js   "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-workspace-color\client.js" -Force
-Copy-Item .\package.json "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-workspace-color\package.json" -Force
+Copy-Item .\client.js, .\package.json "$env:USERPROFILE\.dsh\profiles\web\node_modules\dsh-workspace-color\" -Force
 ```
-
-Then press Ctrl+R in the page.
 
 ### Self-check
 
-- `node --check client.js` passes;
+- `node scripts/build.mjs --check` passes; `node --check client.js` passes;
 - the installed copy hashes the same as the source;
 - after reload, **Settings → Sidebar colours** is there, blocks and palette icon behave.
 
@@ -155,20 +168,26 @@ Then press Ctrl+R in the page.
 
 ```
 dsh-workspace-color/
-├─ client.js          # browser side: blocks / tree / colour panel + settings section (~2.0k lines)
-├─ index.js           # host side: empty (declares the name only)
-├─ cordis.patch.yml   # bundle patch: inserts one plugin entry into the profile
-├─ package.json       # manifest: dsh.bundle / dsh.client + deps
-├─ install.ps1        # one-shot install for Windows
-├─ install.sh         # one-shot install for macOS / Linux
-├─ README.md          # Chinese (default)
-├─ README.en.md       # English
+├─ client.js               # built artifact: browser bundle (blocks / tree / colour panel + settings section)
+├─ src/
+│  ├─ settings.css         # settings-page styles (ws- namespace, reads DSH theme tokens only)
+│  └─ settings-section.js  # settings section component (React.createElement)
+├─ scripts/
+│  └─ build.mjs            # splices src/ into client.js (supports --check)
+├─ index.js                # host side: empty (declares the name only)
+├─ cordis.patch.yml        # bundle patch: inserts one plugin entry into the profile
+├─ package.json            # manifest: dsh.bundle / dsh.client + scripts.build
+├─ install.ps1             # one-shot install for Windows
+├─ install.sh              # one-shot install for macOS / Linux
+├─ README.md               # Chinese (default)
+├─ README.en.md            # English
 ├─ LICENSE
 └─ .gitattributes / .gitignore
 ```
 
 ## Changelog
 
+- **1.0.0** — First stable release: features are finalised, settings-page sources live in `src/` with a `scripts/build.mjs` build check, and the repository holds nothing but the plugin itself.
 - **0.10.0** — Settings page redesign: page title + master switch, live sample-sidebar preview (light/dark switch also selects which theme "tuning" edits), hierarchy and tuning side by side, all controls hand-drawn on DSH theme tokens (light/dark follow automatically), and the settings page keeps its styling while the plugin is disabled. Setting semantics unchanged.
 - **0.9.1** — Metadata and docs cleanup: rewrote the README, removed early screenshots and stray repository links.
 - **0.9.0** — Preset panel rework: 12 dots = 9 hue anchors (shared lightness/chroma) + white/grey/black; the system picker is harmonised by default (can be turned off); automatic colours now avoid the background hue and split 6 slots; old manual colours are migrated.

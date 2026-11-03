@@ -1,0 +1,11 @@
+﻿# 统一换行符，避免 Windows 检出后 shell 脚本无法在 macOS/Linux 执行
+* text=auto
+
+*.sh   text eol=lf
+*.ps1  text eol=crlf
+*.js   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.md   text eol=lf
+
+*.png  binary

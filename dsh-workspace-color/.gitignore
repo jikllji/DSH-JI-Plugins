@@ -1,0 +1,27 @@
+# 依赖
+node_modules/
+pnpm-lock.yaml
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# 临时与调试产物
+*.log
+*.tmp
+.capture*.ps1
+.verify*.html
+.verify*.js
+.probe*.mjs
+.scan*.mjs
+*.mjs.bak
+
+# 备份（本地开发用，不发布）
+.bak-*/
+*.bak
+*.bak-*
+
+

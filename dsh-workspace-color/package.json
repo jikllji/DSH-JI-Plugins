@@ -1,6 +1,6 @@
 {
   "name": "dsh-workspace-color",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "description": "DSH 侧边栏工作区层级配色：鼠标悬浮工作区行时出现颜料板图标，可从 12 个圆点预设（9 个统一明暗/饱和的色相 + 白/灰/黑）或系统取色器（默认按主题协调化）为单个工作区固定颜色；未指定的工作区按层级自动配色（同层同色、父子异色、色相自动避开背景）；当前会话标题标红；置顶图钉颜色可自定义。全部设置收进官方设置页的「侧边栏配色」分区。",
   "keywords": [
     "dsh",
@@ -19,10 +19,16 @@
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check && node --check client.js"
+  },
   "author": "Jikllji",
   "files": [
     "index.js",
     "client.js",
+    "src",
+    "scripts",
     "cordis.patch.yml",
     "install.ps1",
     "install.sh",
