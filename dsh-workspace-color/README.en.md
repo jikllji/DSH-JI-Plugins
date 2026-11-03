@@ -10,7 +10,7 @@ Hover a workspace row and a palette icon appears left of the "⋯" — pin any c
 
 All settings live in **Settings → Sidebar colours**.
 
-> Version **1.0.0** · Targets DSH **0.2.1-rc.2** · MIT · presentation layer only, never touches data
+> Version **0.1.0** · Targets DSH **0.2.1-rc.2** · MIT · presentation layer only, never touches data
 >
 > Colour algorithm inspired by `https://github.com/lsb0554/dsh-sidebar-color`
 
@@ -187,14 +187,7 @@ dsh-workspace-color/
 
 ## Changelog
 
-- **1.0.0** — First stable release: features are finalised, settings-page sources live in `src/` with a `scripts/build.mjs` build check, and the repository holds nothing but the plugin itself.
-- **0.10.0** — Settings page redesign: page title + master switch, live sample-sidebar preview (light/dark switch also selects which theme "tuning" edits), hierarchy and tuning side by side, all controls hand-drawn on DSH theme tokens (light/dark follow automatically), and the settings page keeps its styling while the plugin is disabled. Setting semantics unchanged.
-- **0.9.1** — Metadata and docs cleanup: rewrote the README, removed early screenshots and stray repository links.
-- **0.9.0** — Preset panel rework: 12 dots = 9 hue anchors (shared lightness/chroma) + white/grey/black; the system picker is harmonised by default (can be turned off); automatic colours now avoid the background hue and split 6 slots; old manual colours are migrated.
-- **0.8.x** — Hover palette entry (left of "⋯"), dot colour panel, pinned-pin colour, palette icon in the Settings navigation, separate parent/child text colours.
-- **0.8.0** — Colour entry appears on hover; popover replaced by dots + system picker.
-- **0.7.0** — Fixed preset colours replace hue sliders; inline colour square on rows.
-- **0.6.x** — Settings moved into the built-in Settings page; nested parent/child blocks; hierarchy colouring became same-depth-same-colour, parent ≠ child.
+- **0.1.0** — First release: automatic hierarchy colouring (same depth = same colour, parent ≠ child, background hue avoided), 12 dot presets plus the system picker, current-session title in red and a customisable pinned-pin colour; all settings live in the built-in Settings page with a live sample-sidebar preview.
 
 ## License
 
