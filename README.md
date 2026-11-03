@@ -11,6 +11,7 @@ DSH 个人插件集合。
 | [ji-theme](ji-theme/README.md) | DSH-DreamSkin 主题适配插件:使 DSH 能够使用 Codex 主题,主题库:https://dreamskin.cc/ |
 | [ji-filable](ji-filable/README.md) | 文件上传插件:把图片或文件拖进聊天,按原始文件名无损落盘到会话工作区的 `sessionfiles/`,agent 可直接读取 |
 | [ji-skills](ji-skills/README.md) | 追求原版风格的「技能」插件:在设置页按来源分块只读列出已安装技能,卡片视觉对齐内置插件页 |
+| [dsh-workspace-color](dsh-workspace-color/README.md) | 侧边栏工作区分层配色:工作区按父子层级自动上色、也可单个固定颜色,当前会话标题标红,置顶图钉颜色可改 |
 
 ## 安装插件
 
