@@ -1,0 +1,50 @@
+{
+  "name": "dsh-theme",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH-Theme — DreamSkin (dreamskin.cc) skin packages mapped onto the dsh web UI through a contrast-guarded OKLCH kernel",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./kernel": "./lib/kernel.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/kernel.js",
+    "lib/store.js",
+    "lib/zip.js",
+    "lib/zip-write.js",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md"
+  ],
+  "scripts": {
+    "build": "node tools/build-client.mjs",
+    "check": "node tools/check-kernel.mjs && node tools/check-packages.mjs && node tools/build-client.mjs --check && node tools/check-client.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-theme"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-locale": "*",
+    "@deepseek-ai/dsh-client-ui-theme": "*",
+    "@deepseek-ai/dsh-client-ui-slots": "*"
+  },
+  "license": "MIT"
+}

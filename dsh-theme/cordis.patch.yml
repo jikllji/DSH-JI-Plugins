@@ -1,0 +1,4 @@
+# DSH-Theme bundle layer: mount the theme plugin into the web profile.
+- insert:
+    - id: dsh-theme
+      name: 'dsh-theme'
