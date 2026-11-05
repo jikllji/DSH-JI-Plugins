@@ -1,0 +1,4 @@
+# DSH-Filable bundle layer: mount the drag-and-drop file intake plugin row.
+- insert:
+    - id: dsh-filable
+      name: 'dsh-filable'

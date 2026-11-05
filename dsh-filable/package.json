@@ -1,0 +1,38 @@
+{
+  "name": "dsh-filable",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH-Filable — drag-and-drop any file (images included) into chat; session-scoped lossless storage under the workspace sessionfiles/ dir, readable by the agent.",
+  "exports": {
+    ".": "./dsh/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "slots",
+        "sessions",
+        "locale"
+      ]
+    }
+  },
+  "files": [
+    "dsh/",
+    "lib/",
+    "scripts/",
+    "cordis.patch.yml",
+    "CONTEXT.md",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build-client.mjs"
+  }
+}

@@ -1,0 +1,21 @@
+# dsh-filable — 领域词汇表（CONTEXT.md）
+
+> 插件级领域语言。架构讨论（模块/接口/深度/seam/适配器/杠杆/局部性）见 codebase-design 词汇；本表只定义 dsh-filable 自己的概念。改词先改这里。
+
+## 领域概念
+
+- **拖放截胡（drop interception）** — 浏览器半在 document **capture 阶段**接管**所有**文件拖放（`preventDefault + stopPropagation`），先于输入栏 bubble 阶段的图片附件逻辑。**图片不再例外**：拖入的图片与文档一样进 `sessionfiles/`，原生图片附件流程不再接收任何拖放。
+- **sessionfiles** — 每个会话工作区下的落盘文件夹（`<会话工作区>\sessionfiles\`），拖入文件以**原始文件名**落在这里；用户可在资源管理器浏览，agent 用现有工具（glob/read）直接读取。
+- **会话工作区（session workspace）** — 会话创建时记录的绝对工作目录（`Session.header.cwd`）。上传落盘位置的唯一权威来源；解析不到时 **fail-closed**（拒绝上传，不信任客户端上报）。
+- **chip** — 输入栏上方 dock 行的展示条目（文件名/大小/状态：上传中→已就绪/失败），会话切换时清空；左侧带一个**关闭（✕）**按钮可单独移除该 chip（仅隐藏展示，不影响已在途的上传/落盘，上传完成后仍会 toast）；「已就绪」chip 额外带一个**插入 @地址**按钮（点击把该文件的原生 `@sessionfiles/<名>` 追加进 composer 草稿）。
+- **文件引用插入（@file reference insert）** — 在「已就绪」chip 上点击后，把该文件的原生 `@文件引用`（`@sessionfiles/<名>`，含空格用 `@"..."`）追加进当前会话 composer 草稿。纯函数 `sessionfilesRef(name)`（按原生 grammar 产出 `@path`/`@"path"`，不可表示返回 null）与 `appendRef(draft, ref)`（仅在草稿非空且末尾无空格时补一个空格）承载生成与拼接；触发经 `conversation.input.for(actx).setDraft`（对齐 QueueDock 先例），仅当 `phase === 'plain'` 时生效，失败静默。
+- **toast** — 瞬时反馈（成功/失败/提示），经 `shell.overlay` 槽渲染，React state 驱动。
+- **原子写入器（persistStream）** — 宿主内部深模块：接收字节流 + 目标目录 + 文件名 + 大小上限 + 期望哈希 → 原子写盘（tmp+rename）输出 `{path, size, sha256}`；负责流接收/哈希/临时文件清理/Windows 句柄关闭竞态/命名去重（`name (1).ext`）。
+- **drop 管线（planUploads）** — 浏览器半纯函数：输入文件列表 → 输出 `{takeOver}`（接管集 = 全部文件，顺序保留）；handleDrop 做薄编排。
+- **subscribeStore** — 浏览器半微型订阅 store（get/set/subscribe），toasts 与 chips 共用同一机制；定时器由插件 fiber 生命周期清理。
+- **拖放提示（drop hint）** — 拖入**任何**文件（含图片）时显示的全屏提示层，视觉与文案对齐 dsh 内置的 composer DropOverlay（同一套两张插图、同一份 CSS：`--dsw-alias-bg-mask-drop` + `blur(10px)` + `--dsw-font-l-20/s-14`，本插件用 `dsh-filable-hint-*` 类名承载）；标题文案「拖入图片或文件」。`pointer-events: none` 装饰、经 `shell.overlay` 条目渲染。**无会话**时显示内置的 blocked 变体插图 + 「先打开一个会话」。显示/隐藏由 dragDepth 计数 + dragleave 出视口/成功 drop 触发（不再有 MIME 判定）。
+
+## 协议契约
+
+- 上传错误码：`too-large`（413）、`sha-mismatch`（400）、`session workspace unknown`（400）——host 抛出、client 按 code 判定（文案映射），禁止裸字符串跨文件耦合。
+- 上传请求：`POST /dsh-filable/files?session=<id>&name=<原名>`，body = 原始字节流，头 `x-sha256`（客户端预计算）。响应 `{ok, file:{name,size,sha256}}`。
