@@ -4,7 +4,7 @@
 
 DSH 的文件上传插件:把**图片和文件**拖进聊天,按**原始文件名**无损落盘到会话工作区的 `sessionfiles/` 目录——用户可在资源管理器浏览,agent 用现有工具(glob/read)直接读取。
 
-当前版本 **0.5.0**。
+当前版本 **0.6.0**。
 
 ## 功能
 
@@ -72,7 +72,7 @@ node scripts/build-client.mjs
 ## 版本
 
 - **0.6.0** — 改名 **ji-filable → dsh-filable**：包名、profile bundle 行名、宿主路由 `/dsh-filable/files`、拖放提示类名 `dsh-filable-hint-*`、文档与示例全部同步（行为逻辑未改）；按仓库约定补回 `LICENSE` 与双语 README（`README.md` 中文 / `README.en.md` 英文），补齐 `files`/`scripts` 字段，删除 3 个遗留 `lib/client.js.bak-*`。
-- **0.5.0** — 取消 MIME 分流:**所有**拖入文件(图片也一视同仁)落盘到会话工作区的 `sessionfiles/`,原生图片附件流程不再接收拖放;拖放提示层对齐 dsh 内置 composer DropOverlay(同一套两张插图与 CSS 变量,类名 `dsh-filable-hint-*`,标题「拖入图片或文件」);`planUploads` 不再产出 `skippedImages`,移除「混拖跳过图片」提示;`lib/drop-logic.js` 删掉类型判定纯函数 `classifyFile` / `classifyBatch` / `dragTypes` / `shouldShowDropHint`,拖放管线只剩 `planUploads`(接管集 = 全部文件)。
+- **0.5.0** — 取消 MIME 分流:**所有**拖入文件(图片也一视同仁)落盘到会话工作区的 `sessionfiles/`,原生图片附件流程不再接收拖放;拖放提示层对齐 dsh 内置 composer DropOverlay(同一套两张插图与 CSS 变量,类名 `ji-filable-hint-*`,标题「拖入图片或文件」);`planUploads` 不再产出 `skippedImages`,移除「混拖跳过图片」提示;`lib/drop-logic.js` 删掉类型判定纯函数 `classifyFile` / `classifyBatch` / `dragTypes` / `shouldShowDropHint`,拖放管线只剩 `planUploads`(接管集 = 全部文件)。
 - **0.4.1** — 适配 DSH **0.1.6-alpha.2**:该版本把「当前会话」从 sessions 服务的快照(`list.current`)移交给视图层,拖放与「插入 @地址」改为从插件自己的会话作用域 dock 组件(`props.sessionId`)取会话身份,修掉「明明开着会话却提示『先打开一个会话』」;`list.current` 仍作为老宿主的兜底保留。
 - **0.4.0** — 修复「插入 @地址」破坏草稿已有引用的问题(改走 `slash/input-insert-reference`);按 DSH **0.1.6-alpha.1** 的输入框契约核对实现;README 补齐 chip 动作、混拖/提示、上限与 `maxBytes`。
 - 0.2.0 — 适配 DSH 0.1.2-rc.1。

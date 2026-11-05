@@ -4,7 +4,7 @@ English | [中文](README.md)
 
 A DSH file-upload plugin: drag any **file** (images included) into chat and it is stored losslessly, under its original filename, in the session workspace's `sessionfiles/` directory — browsable in Explorer, and readable by the agent with its normal tools (glob/read).
 
-Current version **0.5.0**.
+Current version **0.6.0**.
 
 ## Features
 
@@ -72,7 +72,7 @@ node scripts/build-client.mjs
 ## Versions
 
 - **0.6.0** — Renamed **ji-filable → dsh-filable**: package name, profile bundle row, host route `/dsh-filable/files`, drop-hint class prefix `dsh-filable-hint-*`, docs and examples all updated (no behavior change); restored the repo conventions (`LICENSE`, bilingual `README.md` Chinese / `README.en.md` English), added `files`/`scripts` manifest fields, and removed three stale `lib/client.js.bak-*` backups.
-- **0.5.0** — MIME split removed: **every** dropped file (images included) is stored under the session workspace `sessionfiles/`, and the native image-attachment flow no longer receives drops; the drop hint layer now mirrors dsh's built-in composer DropOverlay (same two illustrations, same CSS variables, `dsh-filable-hint-*` class names, "Drop images or files" title); `planUploads` no longer returns `skippedImages` and the "mixed batch, images skipped" toast is gone; `lib/drop-logic.js` drops the type-classification helpers `classifyFile` / `classifyBatch` / `dragTypes` / `shouldShowDropHint`, leaving the drop pipeline as just `planUploads` (the take-over set is every file).
+- **0.5.0** — MIME split removed: **every** dropped file (images included) is stored under the session workspace `sessionfiles/`, and the native image-attachment flow no longer receives drops; the drop hint layer now mirrors dsh's built-in composer DropOverlay (same two illustrations, same CSS variables, `ji-filable-hint-*` class names, "Drop images or files" title); `planUploads` no longer returns `skippedImages` and the "mixed batch, images skipped" toast is gone; `lib/drop-logic.js` drops the type-classification helpers `classifyFile` / `classifyBatch` / `dragTypes` / `shouldShowDropHint`, leaving the drop pipeline as just `planUploads` (the take-over set is every file).
 - **0.4.1** — DSH **0.1.6-alpha.2** compatibility: that release moved "the session on screen" out of the sessions-service snapshot (`list.current`) into the view layer, so drops and Insert @path now take the Session identity from this plugin own session-scoped dock component (`props.sessionId`), fixing "open a session first" while a session is clearly open; `list.current` stays as the older-host fallback.
 - **0.4.0** — fixes Insert @path destroying existing draft references (now goes through `slash/input-insert-reference`); implemented against DSH **0.1.6-alpha.1**'s composer contract; README now covers chip actions, mixed drops/hints, the size limit and `maxBytes`.
 - 0.2.0 — DSH 0.1.2-rc.1 compatibility.
