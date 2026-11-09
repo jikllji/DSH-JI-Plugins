@@ -17,8 +17,10 @@ window.__ModuleLoader__.load({
 // module loader only resolves table words, not sibling files; this module is
 // what the unit tests pin.
 //
-// Every dropped file is taken over, images included: they all land in the
-// session's `sessionfiles/` dir, so no MIME split exists any more.
+// Two settings switches route each dropped file category: either into the
+// session's `sessionfiles/` dir (this plugin's upload path) or into DSH's
+// native attachment pipeline. Both default to `sessionfile`, the plugin's
+// historical behaviour when no preference has been stored.
 
 /**
  * Build the upload request URL with URL-encoded query parameters.
@@ -38,8 +40,7 @@ function isFileDrag(dataTransfer) {
 }
 
 /**
-
-/** Human-readable byte size ("1.2 MB"). */
+ * Human-readable byte size ("1.2 MB"). */
 function formatBytes(value) {
   const n = Number(value)
   if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0) return '0 B'
@@ -70,7 +71,6 @@ function subscribeStore(initial) {
   }
 }
 
-/**
 /**
  * Plan a dropped batch: every file is taken over (no MIME split) and returned
  * in request order.
@@ -108,34 +108,133 @@ function appendRef(draft, ref) {
   return d + sep + ref
 }
 
+// ── file routing settings (two switches in General settings) ─────────────
+// `native` hands a drop back to DSH's attachment pipeline; `sessionfile`
+// uploads it to the workspace sessionfiles dir through the plugin's route.
+
+/** localStorage key holding both switches. */
+const SETTINGS_KEY = 'dsh-filable:settings'
+
+/** Both categories default to the plugin's existing sessionfiles behaviour. */
+const DEFAULT_SETTINGS = { images: 'sessionfile', files: 'sessionfile' }
+
+/**
+ * Classify a dropped file as `images` or `files` (the two switch categories).
+ * MIME is authoritative; the extension is the fallback for empty/odd types.
+ * @param {{name?: string, type?: string}} file
+ * @returns {'images' | 'files'}
+ */
+function fileCategory(file) {
+  const type = String((file && file.type) || '').toLowerCase()
+  if (type.startsWith('image/')) return 'images'
+  const name = String((file && file.name) || '')
+  return /\.(?:png|jpe?g|gif|webp|avif|bmp|svg|ico|tiff?|heic|heif)$/i.test(name) ? 'images' : 'files'
+}
+
+/**
+ * Coerce stored/partial settings into the exact two-switch shape.
+ * @param {unknown} value
+ * @returns {{images: 'native' | 'sessionfile', files: 'native' | 'sessionfile'}}
+ */
+function normalizeSettings(value) {
+  const source = value && typeof value === 'object' ? value : {}
+  return {
+    images: source.images === 'native' ? 'native' : 'sessionfile',
+    files: source.files === 'native' ? 'native' : 'sessionfile',
+  }
+}
+
+/**
+ * Read both switches from a Storage-like object, falling back to defaults
+ * when storage is unavailable, empty, or holds malformed JSON.
+ * @param {{getItem?: (key: string) => string | null} | null | undefined} storage
+ */
+function loadSettings(storage) {
+  try {
+    const raw = storage && typeof storage.getItem === 'function' ? storage.getItem(SETTINGS_KEY) : null
+    return normalizeSettings(raw ? JSON.parse(raw) : null)
+  } catch (error) {
+    return normalizeSettings(null)
+  }
+}
+
+/**
+ * Persist normalized settings and return what was written (a storage failure
+ * keeps the in-memory toggle working for the current page).
+ * @param {{setItem?: (key: string, value: string) => void} | null | undefined} storage
+ * @param {unknown} value
+ */
+function saveSettings(storage, value) {
+  const next = normalizeSettings(value)
+  try {
+    if (storage && typeof storage.setItem === 'function') {
+      storage.setItem(SETTINGS_KEY, JSON.stringify(next))
+    }
+  } catch (error) { /* private mode / quota: keep the in-memory value */ }
+  return next
+}
+
+/**
+ * Split a dropped batch by the two switches, preserving each side's order.
+ * @param {unknown} settings
+ * @param {Array<{name?: string, type?: string}>} files
+ * @returns {{native: Array<object>, sessionfile: Array<object>}}
+ */
+function planDrops(settings, files) {
+  const modes = normalizeSettings(settings)
+  const native = []
+  const sessionfile = []
+  Array.from(files || []).forEach(file => {
+    if (modes[fileCategory(file)] === 'native') native.push(file)
+    else sessionfile.push(file)
+  })
+  return { native, sessionfile }
+}
+
     var NS = "dsh-filable";
     var zh = {
       "dsh-filable.chip.uploading": "上传中",
       "dsh-filable.chip.done": "已就绪",
       "dsh-filable.chip.error": "失败",
-      "dsh-filable.chip.insert": "插入 @地址",
-      "dsh-filable.chip.close": "关闭",
+      "dsh-filable.chip.insert": "插入引用",
+      "dsh-filable.chip.close": "移除",
       "dsh-filable.drag.noSession": "请先打开一个会话，再拖入文件",
       "dsh-filable.drag.noWorkspace": "无法确定会话工作区，文件未保存",
-      "dsh-filable.drag.done": "已上传 {count} 个文件到工作区 sessionfiles",
-      "dsh-filable.drag.partial": "上传完成 {ok} 个，失败: {err}",
+      "dsh-filable.drag.done": "已保存 {count} 个文件到 sessionfiles",
+      "dsh-filable.drag.partial": "保存完成 {ok} 个，失败: {err}",
       "dsh-filable.dropHint.title": "拖入图片或文件",
-      "dsh-filable.dropHint.desc": "松开即保存到工作区 sessionfiles",
+      "dsh-filable.dropHint.desc": "图片：{images} · 其他文件：{files}",
+      "dsh-filable.dropHint.native": "交给原生附件",
+      "dsh-filable.dropHint.sessionfile": "存入 sessionfiles",
       "dsh-filable.dropHint.noSession": "先打开一个会话，再拖入图片或文件",
+      "dsh-filable.settings.title": "拖入文件的处理方式",
+      "dsh-filable.settings.desc": "开关亮起时保存到工作区 sessionfiles 目录，并可在卡片上插入 @ 引用；关闭后交给 DSH 原生附件。",
+      "dsh-filable.settings.images": "图片",
+      "dsh-filable.settings.files": "其他文件",
+      "dsh-filable.settings.native": "原生附件",
+      "dsh-filable.settings.sessionfile": "sessionfiles",
     };
     var en = {
       "dsh-filable.chip.uploading": "Uploading",
       "dsh-filable.chip.done": "Ready",
       "dsh-filable.chip.error": "Failed",
-      "dsh-filable.chip.insert": "Insert @ref",
-      "dsh-filable.chip.close": "Close",
+      "dsh-filable.chip.insert": "Insert ref",
+      "dsh-filable.chip.close": "Remove",
       "dsh-filable.drag.noSession": "Open a session before dropping files",
       "dsh-filable.drag.noWorkspace": "Session workspace unknown — file not saved",
-      "dsh-filable.drag.done": "Uploaded {count} file(s) to workspace sessionfiles",
-      "dsh-filable.drag.partial": "Uploaded {ok}, failed: {err}",
+      "dsh-filable.drag.done": "Saved {count} file(s) to sessionfiles",
+      "dsh-filable.drag.partial": "Saved {ok}, failed: {err}",
       "dsh-filable.dropHint.title": "Drop images or files",
-      "dsh-filable.dropHint.desc": "Release to save into workspace sessionfiles",
+      "dsh-filable.dropHint.desc": "Images: {images} · Other files: {files}",
+      "dsh-filable.dropHint.native": "native attachments",
+      "dsh-filable.dropHint.sessionfile": "into sessionfiles",
       "dsh-filable.dropHint.noSession": "Open a session before dropping images or files",
+      "dsh-filable.settings.title": "Dropped file handling",
+      "dsh-filable.settings.desc": "On saves the file into the workspace sessionfiles directory and offers an @ reference on the card; off sends it to DSH's native attachments.",
+      "dsh-filable.settings.images": "Images",
+      "dsh-filable.settings.files": "Other files",
+      "dsh-filable.settings.native": "Native",
+      "dsh-filable.settings.sessionfile": "sessionfiles",
     };
 
     // ── toast store (subscribeStore; timers tracked for fiber cleanup) ─────
@@ -157,15 +256,93 @@ function appendRef(draft, ref) {
     // ── chip store (display-only, session-scoped) ──────────────────────────
     var chips = subscribeStore([]);
     var chipSeq = 0;
-    var CHIP_ROW_STYLE = { display: "flex", flexWrap: "wrap", gap: "8px", padding: "0 2px 2px", boxSizing: "border-box" };
-    var CHIP_ITEM_STYLE = { display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", borderRadius: "8px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", fontSize: "12px", maxWidth: "320px" };
-    var CHIP_ERR_STYLE = { borderColor: "var(--dsw-state-error-primary, #d9534f)" };
-    var CHIP_NAME_STYLE = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-    var CHIP_META_STYLE = { color: "var(--dsw-alias-label-secondary)", whiteSpace: "nowrap" };
-    var CHIP_DONE_STYLE = { cursor: "pointer" };
-    var CHIP_INSERT_STYLE = { marginLeft: "6px", padding: "2px 8px", borderRadius: "6px", border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-2)", color: "var(--dsw-alias-label-primary)", fontSize: "12px", cursor: "pointer", flex: "none" };
-    var CHIP_CLOSE_STYLE = { flex: "none", border: "none", background: "transparent", color: "var(--dsw-alias-label-tertiary)", cursor: "pointer", fontSize: "14px", lineHeight: "1", padding: "2px 4px", borderRadius: "4px" };
-    var CHIP_CLOSE_HOVER = { background: "var(--dsw-alias-bg-layer-2)", color: "var(--dsw-alias-label-primary)" };
+    // ── routing settings (two switches, persisted in localStorage) ────────
+    // Each dropped file is routed per category: images and everything else can
+    // independently go to DSH's native attachments or into sessionfiles. The
+    // settings live in localStorage because they only steer the client drop
+    // path (same reasoning as dsh-workspace-color's appearance settings).
+    var settingsStorage = (function () {
+      try { return window.localStorage; } catch (error) { return null; }
+    })();
+    var settings = subscribeStore(loadSettings(settingsStorage));
+
+    function setCategoryMode(category, mode) {
+      var patch = {};
+      patch[category] = mode;
+      settings.set(saveSettings(settingsStorage, Object.assign({}, settings.get(), patch)));
+    }
+
+    function modeLabel(t, mode) {
+      return mode === "native" ? t("dsh-filable.settings.native") : t("dsh-filable.settings.sessionfile");
+    }
+
+    function routingSummary(t) {
+      var value = settings.get();
+      return t("dsh-filable.dropHint.desc", {
+        images: value.images === "native" ? t("dsh-filable.dropHint.native") : t("dsh-filable.dropHint.sessionfile"),
+        files: value.files === "native" ? t("dsh-filable.dropHint.native") : t("dsh-filable.dropHint.sessionfile"),
+      });
+    }
+
+    // ── visual helpers for the file cards ─────────────────────────────────
+    var ICON_TONES = {
+      pdf: "#e5484d", doc: "#3b82f6", docx: "#3b82f6", xls: "#22a06b", xlsx: "#22a06b",
+      csv: "#22a06b", ppt: "#f59e0b", pptx: "#f59e0b", png: "#8b5cf6", jpg: "#8b5cf6",
+      jpeg: "#8b5cf6", gif: "#8b5cf6", webp: "#8b5cf6", svg: "#8b5cf6", zip: "#a16207",
+      rar: "#a16207", "7z": "#a16207", js: "#f59e0b", ts: "#3178c6", py: "#3572a5",
+      json: "#6b7280", md: "#6b7280", txt: "#6b7280",
+    };
+
+    function fileExt(name) {
+      var base = String(name || "");
+      var dot = base.lastIndexOf(".");
+      if (dot <= 0 || dot === base.length - 1) return "FILE";
+      return base.slice(dot + 1, dot + 4).toUpperCase();
+    }
+
+    function iconTone(name) {
+      return ICON_TONES[fileExt(name).toLowerCase()] || "var(--dsw-alias-brand-primary)";
+    }
+
+    // One stylesheet for the cards and for the General-settings block; both
+    // are mounted as a single <style> in apply(), so hover/transition states
+    // stay CSS-only instead of being re-implemented with React state.
+    var UI_CSS = [
+      ".dsh-filable-cards{display:flex;flex-wrap:wrap;gap:8px;padding:0 2px 6px;box-sizing:border-box;width:100%}",
+      ".dsh-filable-card{display:flex;align-items:center;gap:10px;min-width:0;max-width:340px;padding:8px 8px 8px 9px;box-sizing:border-box;border-radius:12px;border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 1px 2px rgba(0,0,0,.04);transition:border-color .14s ease,box-shadow .14s ease,background-color .14s ease}",
+      ".dsh-filable-card:hover{border-color:var(--dsw-alias-border-l3);background:var(--dsw-alias-bg-layer-2);box-shadow:0 2px 10px rgba(0,0,0,.06)}",
+      ".dsh-filable-card[data-status=error]{border-color:var(--dsw-alias-state-error-primary,var(--dsw-state-error-primary,#d9534f))}",
+      ".dsh-filable-card-icon{flex:none;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:.5px solid color-mix(in srgb,currentColor 20%,transparent);background:color-mix(in srgb,currentColor 10%,var(--dsw-alias-bg-layer-2));font-size:9.5px;font-weight:700;letter-spacing:.3px;line-height:1;text-transform:uppercase;user-select:none}",
+      ".dsh-filable-card-body{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}",
+      ".dsh-filable-card-name{font-size:13px;font-weight:500;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+      ".dsh-filable-card-meta{font-size:11px;line-height:15px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+      ".dsh-filable-card[data-status=error] .dsh-filable-card-meta{color:var(--dsw-alias-state-error-primary,var(--dsw-state-error-primary,#d9534f))}",
+      ".dsh-filable-card-progress{position:relative;height:2px;margin-top:4px;border-radius:999px;background:var(--dsw-alias-bg-layer-3);overflow:hidden}",
+      ".dsh-filable-card-progress-bar{position:absolute;top:0;left:0;width:45%;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary);animation:dshFilableCardProgress 1.15s ease-in-out infinite}",
+      "@keyframes dshFilableCardProgress{0%{transform:translateX(-110%)}100%{transform:translateX(240%)}}",
+      ".dsh-filable-card-actions{display:flex;align-items:center;gap:2px;flex:none;margin-left:2px}",
+      ".dsh-filable-card-insert{appearance:none;border:.5px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:11px;line-height:16px;padding:3px 8px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background-color .14s ease,color .14s ease,border-color .14s ease}",
+      ".dsh-filable-card-insert:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary)}",
+      ".dsh-filable-card-remove{appearance:none;border:0;background:transparent;color:var(--dsw-alias-label-tertiary);width:22px;height:22px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1;cursor:pointer;transition:background-color .14s ease,color .14s ease}",
+      ".dsh-filable-card-remove:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}",
+      "@media (prefers-reduced-motion:reduce){.dsh-filable-card-progress-bar{animation:none;width:100%;opacity:.5}}",
+      ".dsh-filable-settings{display:flex;flex-direction:column;gap:10px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2);box-sizing:border-box}",
+      ".dsh-filable-settings-head{display:flex;flex-direction:column;gap:4px;padding-right:48px;min-width:0}",
+      ".dsh-filable-settings-title{font-size:14px;font-weight:400;line-height:22px;color:var(--dsw-alias-label-primary)}",
+      ".dsh-filable-settings-desc{font-size:12px;font-weight:400;line-height:18px;color:var(--dsw-alias-label-tertiary)}",
+      ".dsh-filable-settings-panel{display:flex;flex-direction:column;padding:2px 12px;border:.5px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);box-sizing:border-box}",
+      ".dsh-filable-setting-row{display:flex;align-items:center;gap:10px;min-height:44px;padding:2px 0;border-bottom:.5px solid var(--dsw-alias-border-l1)}",
+      ".dsh-filable-setting-row:last-child{border-bottom:none}",
+      ".dsh-filable-setting-label{flex:1;min-width:0;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary)}",
+      ".dsh-filable-setting-mode{flex:none;font-size:11px;line-height:16px;padding:2px 8px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-tertiary);border:.5px solid var(--dsw-alias-border-l1);transition:color .14s ease}",
+      ".dsh-filable-setting-mode[data-mode=native]{color:var(--dsw-alias-brand-primary)}",
+      ".dsh-filable-switch{appearance:none;flex:none;margin:0;padding:0;border:0;background:transparent;cursor:pointer;border-radius:10px;display:inline-flex}",
+      ".dsh-filable-switch:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}",
+      ".dsh-filable-switch-track{position:relative;display:inline-block;box-sizing:border-box;width:36px;height:20px;border-radius:10px;background:var(--dsw-alias-border-l3,rgba(128,128,128,.4));transition:background-color .12s ease}",
+      ".dsh-filable-switch[data-on=true] .dsh-filable-switch-track{background:var(--dsw-alias-brand-primary)}",
+      ".dsh-filable-switch-thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--dsw-alias-label-primary-foreground,#fff);box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .12s ease}",
+      ".dsh-filable-switch[data-on=true] .dsh-filable-switch-thumb{transform:translateX(16px)}",
+    ].join("");
     function addChip(entry) {
       var id = ++chipSeq;
       chips.set(chips.get().concat([Object.assign({ id: id, status: "uploading" }, entry)]));
@@ -203,7 +380,7 @@ function appendRef(draft, ref) {
             dangerouslySetInnerHTML: { __html: illustration },
           }),
           React.createElement("div", { className: "dsh-filable-hint-title" }, value.disabled ? t("dsh-filable.dropHint.noSession") : t("dsh-filable.dropHint.title")),
-          value.disabled ? null : React.createElement("div", { className: "dsh-filable-hint-desc" }, t("dsh-filable.dropHint.desc")),
+          value.disabled ? null : React.createElement("div", { className: "dsh-filable-hint-desc" }, routingSummary(t)),
         ));
     }
     // The built-in overlay's two illustrations (115x84), inlined as markup so
@@ -234,24 +411,42 @@ function appendRef(draft, ref) {
         }));
     }
 
-    // Close (dismiss) button placed at the left edge of a chip. Hover state is
-    // tracked per-button so hooks stay inside a stable component (hooks cannot
-    // be called inside a .map callback).
-    function CloseButton(props) {
+    // One card per dropped file: an extension badge, name plus size/status,
+    // an indeterminate progress rail while uploading, then the insert-reference
+    // and remove actions. Hover states come from UI_CSS, so the component only
+    // keeps the state that actually changes (status).
+    function FileCard(props) {
       var t = props.t;
+      var chip = props.chip;
+      var onInsert = props.onInsert;
       var onRemove = props.onRemove;
-      var hover = React.useState(false);
-      var isHover = hover[0];
-      var setHover = hover[1];
-      return React.createElement("button", {
+      var done = chip.status === "done";
+      var statusText = chip.status === "uploading" ? t("dsh-filable.chip.uploading") : chip.status === "error" ? t("dsh-filable.chip.error") : t("dsh-filable.chip.done");
+      var actions = [];
+      if (done && onInsert) {
+        actions.push(React.createElement("button", {
+          key: "insert",
+          type: "button",
+          className: "dsh-filable-card-insert",
+          title: t("dsh-filable.chip.insert"),
+          onClick: function () { onInsert(chip.name); },
+        }, t("dsh-filable.chip.insert")));
+      }
+      actions.push(React.createElement("button", {
+        key: "remove",
         type: "button",
+        className: "dsh-filable-card-remove",
         "aria-label": t("dsh-filable.chip.close"),
         title: t("dsh-filable.chip.close"),
-        style: Object.assign({}, CHIP_CLOSE_STYLE, isHover ? CHIP_CLOSE_HOVER : {}),
-        onMouseEnter: function () { setHover(true); },
-        onMouseLeave: function () { setHover(false); },
-        onClick: function () { if (onRemove) onRemove(); },
-      }, "\u2715");
+        onClick: function () { if (onRemove) onRemove(chip.id); },
+      }, "\u2715"));
+      return React.createElement("div", { className: "dsh-filable-card", "data-status": chip.status },
+        React.createElement("span", { className: "dsh-filable-card-icon", "aria-hidden": "true", style: { color: iconTone(chip.name) } }, fileExt(chip.name)),
+        React.createElement("span", { className: "dsh-filable-card-body" },
+          React.createElement("span", { className: "dsh-filable-card-name", title: chip.name }, chip.name),
+          React.createElement("span", { className: "dsh-filable-card-meta" }, formatBytes(chip.size) + " · " + statusText),
+          chip.status === "uploading" ? React.createElement("span", { className: "dsh-filable-card-progress" }, React.createElement("span", { className: "dsh-filable-card-progress-bar" })) : null),
+        React.createElement("span", { className: "dsh-filable-card-actions" }, actions));
     }
 
     function ChipRow(props) {
@@ -263,27 +458,67 @@ function appendRef(draft, ref) {
       var setItems = state[1];
       React.useEffect(function () { return chips.subscribe(setItems); }, []);
       if (items.length === 0) return null;
-      return React.createElement("div", { style: CHIP_ROW_STYLE },
+      return React.createElement("div", { className: "dsh-filable-cards" },
         items.map(function (chip) {
-          var done = chip.status === "done";
-          var statusText = chip.status === "uploading" ? t("dsh-filable.chip.uploading") : chip.status === "error" ? t("dsh-filable.chip.error") : t("dsh-filable.chip.done");
-          var rows = [
-            React.createElement(CloseButton, { t: t, onRemove: function () { if (onRemove) onRemove(chip.id); } }),
-            React.createElement("span", { style: CHIP_NAME_STYLE }, chip.name),
-            React.createElement("span", { style: CHIP_META_STYLE }, formatBytes(chip.size) + " · " + statusText),
-          ];
-          if (done && onInsert) {
-            rows.push(React.createElement("button", {
-              type: "button",
-              style: CHIP_INSERT_STYLE,
-              onClick: function () { onInsert(chip.name); },
-            }, t("dsh-filable.chip.insert")));
-          }
-          return React.createElement("div", {
-            key: chip.id,
-            style: Object.assign({}, CHIP_ITEM_STYLE, chip.status === "error" ? CHIP_ERR_STYLE : {}, done ? CHIP_DONE_STYLE : {}),
-          }, rows);
+          return React.createElement(FileCard, { key: chip.id, t: t, chip: chip, onInsert: onInsert, onRemove: onRemove });
         }));
+    }
+
+    // ── General settings rows (settings.general.item, order 200 = bottom) ──
+    function Switch(props) {
+      return React.createElement("button", {
+        type: "button",
+        role: "switch",
+        "aria-checked": props.checked ? "true" : "false",
+        "aria-label": props.label,
+        className: "dsh-filable-switch",
+        "data-on": props.checked ? "true" : "false",
+        onClick: function () { props.onChange(!props.checked); },
+      }, React.createElement("span", { className: "dsh-filable-switch-track" },
+        React.createElement("span", { className: "dsh-filable-switch-thumb" })));
+    }
+
+    function SettingRow(props) {
+      var t = props.t;
+      var label = props.category === "images" ? t("dsh-filable.settings.images") : t("dsh-filable.settings.files");
+      var mode = props.mode;
+      // The lit (checked) state means "on" for this plugin's own storage:
+      // sessionfiles. Native attachments are the off state, so the switch reads
+      // as "keep this file type in the workspace" rather than "hand it away".
+      var sessionfile = mode === "sessionfile";
+      return React.createElement("div", { className: "dsh-filable-setting-row" },
+        React.createElement("span", { className: "dsh-filable-setting-label" }, label),
+        React.createElement("span", { className: "dsh-filable-setting-mode", "data-mode": mode }, modeLabel(t, mode)),
+        React.createElement(Switch, {
+          label: label,
+          checked: sessionfile,
+          onChange: function (next) { props.onChange(next ? "sessionfile" : "native"); },
+        }));
+    }
+
+    function SettingsSection(props) {
+      var t = props.t;
+      var state = React.useState(settings.get());
+      var value = state[0];
+      var setValue = state[1];
+      React.useEffect(function () { return settings.subscribe(setValue); }, []);
+      return React.createElement("div", { className: "dsh-filable-settings" },
+        React.createElement("div", { className: "dsh-filable-settings-head" },
+          React.createElement("div", { className: "dsh-filable-settings-title" }, t("dsh-filable.settings.title")),
+          React.createElement("div", { className: "dsh-filable-settings-desc" }, t("dsh-filable.settings.desc"))),
+        React.createElement("div", { className: "dsh-filable-settings-panel" },
+          React.createElement(SettingRow, {
+            t: t,
+            category: "images",
+            mode: value.images,
+            onChange: function (next) { setCategoryMode("images", next); },
+          }),
+          React.createElement(SettingRow, {
+            t: t,
+            category: "files",
+            mode: value.files,
+            onChange: function (next) { setCategoryMode("files", next); },
+          })));
     }
 
     // ── drop capture ──────────────────────────────────────────────────────
@@ -324,8 +559,17 @@ function appendRef(draft, ref) {
     // composer draft through the shell's scoped insert-reference event. A chip
     // insert replaces one span, so chips already in the draft survive — unlike
     // setDraft, which rebuilds the whole document from plain text and flattens
-    // every existing chip into literal text. Best-effort: a resolution failure,
-    // a non-'plain' phase, or a stale-revision CAS miss aborts silently.
+    // every existing chip into literal text.
+    //
+    // Placement: the shell exposes its live selection through
+    // InputActions.captureInsertion() (revision-guarded, detect coordinates).
+    // Capturing on click also covers the case where the click itself blurred
+    // the editor: Lexical retains its selection, so the chip lands at the caret
+    // the user left behind (or replaces the selected range) instead of always
+    // jumping to the end of the draft. Shells without the action face keep the
+    // old end-of-draft fallback.
+    // Best-effort: a resolution failure, a non-'plain' phase, or a
+    // stale-revision CAS miss aborts silently.
     function insertRef(ctx, name) {
       var sessions = ctx.get('sessions') || ctx.sessions;
       if (!sessions) return;
@@ -341,17 +585,33 @@ function appendRef(draft, ref) {
         if (!state || state.phase !== 'plain') return;
         var ref = sessionfilesRef(name);
         if (ref === null || ref === undefined) return;
-        // TokenSpan carries DETECT coordinates, where an existing chip counts as
-        // one U+FFFC while state.draft (clipboard text) expands it to its
-        // clipboardText. A collapsed span at the detect end appends the chip.
-        var occurrences = state.occurrences || [];
-        var expanded = 0;
-        for (var i = 0; i < occurrences.length; i++) {
-          expanded += occurrences[i].length - 1;
+        var span = null;
+        try {
+          var actions = input.actions;
+          if (actions && typeof actions.captureInsertion === 'function') {
+            var captured = actions.captureInsertion();
+            if (captured
+              && typeof captured.start === 'number'
+              && typeof captured.end === 'number'
+              && typeof captured.draftRev === 'number') {
+              span = captured;
+            }
+          }
+        } catch (error) { span = null; }
+        if (span === null) {
+          // Fallback: a collapsed span at the detect end. TokenSpan carries
+          // DETECT coordinates, where an existing chip counts as one U+FFFC
+          // while state.draft (clipboard text) expands it to its clipboardText.
+          var occurrences = state.occurrences || [];
+          var expanded = 0;
+          for (var i = 0; i < occurrences.length; i++) {
+            expanded += occurrences[i].length - 1;
+          }
+          var at = state.draft.length - expanded;
+          if (at < 0) return;
+          span = { start: at, end: at, draftRev: state.draftRev };
         }
-        var at = state.draft.length - expanded;
-        if (at < 0) return;
-        actx.bail(actx, 'slash/input-insert-reference', {
+        var inserted = actx.bail(actx, 'slash/input-insert-reference', {
           // The built-in `reference` source's codec is identity
           // (clipboardText/serialize return the ref), so the chip renders like
           // any other @file chip and the model still receives this exact text.
@@ -362,8 +622,15 @@ function appendRef(draft, ref) {
             appearance: 'file',
             clipboardText: ref,
           },
-          span: { start: at, end: at, draftRev: state.draftRev },
+          span: span,
         });
+        if (inserted === true) {
+          // Keep typing where the chip landed: Lexical restores the selection
+          // its insertion left (right after the new chip).
+          try {
+            if (typeof input.focus === 'function') input.focus();
+          } catch (error) { /* focus is best-effort */ }
+        }
       } catch (error) { /* insert is best-effort */ }
     }
 
@@ -390,6 +657,27 @@ function appendRef(draft, ref) {
         });
     }
 
+    // Hand a batch back to DSH's own composer. The native drop listener lives
+    // on document in the bubble phase and reads dataTransfer.files, so a
+    // synthetic DragEvent delivered on the composer card is enough; native
+    // directory detection just sees an empty item list. The marker property
+    // lets our capture-phase listener below skip this event.
+    function forwardToNative(files) {
+      if (!files || files.length === 0) return false;
+      var card = document.querySelector("[data-composer-card]");
+      if (!card || typeof DataTransfer !== "function" || typeof DragEvent !== "function") return false;
+      try {
+        var transfer = new DataTransfer();
+        for (var i = 0; i < files.length; i++) transfer.items.add(files[i]);
+        var event = new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer });
+        event.__dshFilableForwarded = true;
+        card.dispatchEvent(event);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
     function handleDrop(ctx, sessions, dataTransfer) {
       var items = Array.from(dataTransfer.items || []);
       var hasDirectory = items.some(function (item) {
@@ -397,9 +685,17 @@ function appendRef(draft, ref) {
         return Boolean(entry && entry.isDirectory);
       });
       if (hasDirectory) return Promise.resolve(); // directories are silently ignored
-      var plan = planUploads(Array.from(dataTransfer.files || []));
       var t = ctx.locale.bind(NS);
+      var files = Array.from(dataTransfer.files || []);
+      var plan = planDrops(settings.get(), files);
       var sid = getCurrentSession(sessions);
+      // Native-routed files go back to the composer; if that hand-off is not
+      // possible (no session/composer mounted, DataTransfer unavailable), persist
+      // them through sessionfiles instead of dropping them silently.
+      var uploads = plan.sessionfile.slice();
+      var forwarded = sid !== undefined && sid !== "" && plan.native.length > 0 && forwardToNative(plan.native);
+      if (!forwarded) uploads = uploads.concat(plan.native);
+      if (uploads.length === 0) return Promise.resolve();
       if (sid === undefined || sid === "") {
         toast(t("dsh-filable.drag.noSession"), false);
         return Promise.resolve();
@@ -408,7 +704,7 @@ function appendRef(draft, ref) {
       var errors = [];
       var workspaceUnknown = false;
       var chain = Promise.resolve();
-      plan.takeOver.forEach(function (file) {
+      uploads.forEach(function (file) {
         chain = chain.then(function () {
           var chipId = addChip({ name: file.name, size: file.size });
           return uploadFile(sid, file).then(function (fileInfo) {
@@ -424,7 +720,7 @@ function appendRef(draft, ref) {
       return chain.then(function () {
         if (errors.length === 0) {
           toast(t("dsh-filable.drag.done", { count: okCount }), true);
-        } else if (workspaceUnknown && errors.length === plan.takeOver.length) {
+        } else if (workspaceUnknown && errors.length === uploads.length) {
           toast(t("dsh-filable.drag.noWorkspace"), false);
         } else {
           toast(t("dsh-filable.drag.partial", { ok: okCount, err: errors[0] }), false);
@@ -464,6 +760,9 @@ function appendRef(draft, ref) {
         if (event.relatedTarget === null || (leftViewport && dropHintDepth === 0)) hideDropHint();
       }
       function onDrop(event) {
+        // Our own synthetic hand-off to the native composer: the bubble-phase
+        // listener on document must receive it, so this handler stays out.
+        if (event.__dshFilableForwarded) return;
         if (!isFileDrag(event.dataTransfer)) return;
         event.preventDefault();
         event.stopPropagation();
@@ -509,6 +808,13 @@ function appendRef(draft, ref) {
         document.head.appendChild(style);
         return function () { document.head.removeChild(style); };
       }, "dsh-filable: hint css");
+      // Cards and the General-settings block share one stylesheet (reversible).
+      ctx.effect(function () {
+        var style = document.createElement("style");
+        style.textContent = UI_CSS;
+        document.head.appendChild(style);
+        return function () { document.head.removeChild(style); };
+      }, "dsh-filable: ui css");
 
       // Chips are session-scoped: clear them when the active session changes.
       var lastChipSession = null;
@@ -545,6 +851,13 @@ function appendRef(draft, ref) {
             return function () { clearDockSession(sid); };
           }, [sid]);
           return React.createElement(ChipRow, { t: ctx.locale.bind(NS), onInsert: function (name) { insertRef(ctx, name); }, onRemove: function (id) { removeChip(id); } });
+        });
+      });
+
+      // Bottom rows of Settings → General: one switch per file category.
+      ctx.slots.inject("settings.general.item", function () {
+        return ctx.slots.register({ name: "settings.general.item", id: "dsh-filable-settings", order: 200 }, function () {
+          return React.createElement(SettingsSection, { t: ctx.locale.bind(NS) });
         });
       });
     }

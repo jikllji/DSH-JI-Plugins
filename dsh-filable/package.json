@@ -1,9 +1,9 @@
 {
   "name": "dsh-filable",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
-  "description": "DSH-Filable — drag-and-drop any file (images included) into chat; session-scoped lossless storage under the workspace sessionfiles/ dir, readable by the agent.",
+  "description": "DSH-Filable — drag any file into chat; per-category routing between native DSH attachments and session-scoped lossless storage under the workspace sessionfiles/ dir, with polished file cards.",
   "exports": {
     ".": "./dsh/index.js",
     "./client": "./lib/client.js",
