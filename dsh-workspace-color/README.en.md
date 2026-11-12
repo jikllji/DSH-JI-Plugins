@@ -10,7 +10,7 @@ Hover a workspace row and a palette icon appears left of the "⋯" — pin any c
 
 All settings live in **Settings → Sidebar colours**.
 
-> Version **0.1.0** · Targets DSH **0.2.1-rc.2** · MIT · presentation layer only, never touches data
+> Version **0.1.1** · Targets DSH **0.2.1-rc.2** · MIT · presentation layer only, never touches data
 >
 > Colour algorithm inspired by `https://github.com/lsb0554/dsh-sidebar-color`
 
@@ -187,6 +187,7 @@ dsh-workspace-color/
 
 ## Changelog
 
+- **0.1.1** — Settings toggles now use the built-in Switch colours (`border-l3` / `brand-primary` track, `switch-thumb` / `label-primary-foreground` thumb); the Settings nav icon is registered through the official `settings.section.icon` slot (palette glyph), fixing the duplicate gear icon.
 - **0.1.0** — First release: automatic hierarchy colouring (same depth = same colour, parent ≠ child, background hue avoided), 12 dot presets plus the system picker, current-session title in red and a customisable pinned-pin colour; all settings live in the built-in Settings page with a live sample-sidebar preview.
 
 ## License

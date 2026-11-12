@@ -94,13 +94,16 @@
   opacity: 0;
   margin: 0;
 }
+/* 颜色与官方 Switch（ui-primitives/Switch.module.css）逐项对齐：
+   关 = border-l3 轨道 + switch-thumb 圆钮；开 = brand-primary 轨道 +
+   label-primary-foreground 圆钮（暗色主题下即浅色轨道 + 近黑圆钮）。 */
 .ws-toggle-track {
   position: relative;
   width: 34px;
   height: 20px;
   flex: none;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 15%, transparent);
+  background: var(--dsw-alias-border-l3);
   transition: background 0.18s var(--ds-ease-in-out);
 }
 .ws-toggle-thumb {
@@ -112,12 +115,15 @@
   border-radius: 50%;
   background: var(--dsw-alias-switch-thumb, #fff);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
-  transition: transform 0.18s var(--ds-ease-in-out);
+  transition:
+    transform 0.18s var(--ds-ease-in-out),
+    background 0.18s var(--ds-ease-in-out);
 }
 .ws-toggle input:checked + .ws-toggle-track {
   background: var(--dsw-alias-brand-primary);
 }
 .ws-toggle input:checked + .ws-toggle-track .ws-toggle-thumb {
+  background: var(--dsw-alias-label-primary-foreground, #0f1115);
   transform: translateX(14px);
 }
 .ws-toggle input:focus-visible + .ws-toggle-track {

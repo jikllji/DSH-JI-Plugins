@@ -36,7 +36,7 @@
 //      再点一次已选中的预设恢复层级自动；彩虹点 = 用系统取色器挑任意颜色
 //      （默认只取色相、按主题协调化，可在设置里关闭）。自动配色改为
 //      「让出背景色相 ±45° 冲突弧后均分」。
-//      设置页导航里本分区也用颜料板图标。
+//      设置页导航里本分区也用颜料板图标（官方 settings.section.icon 槽）。
 //      手动颜色存 settings.overrides（workspaceId → 预设 id 或 #rrggbb），
 //      由 resolveOverride 解析成内联 --ws-color / --ws-accent / --ws-weight。
 
@@ -436,7 +436,7 @@ const SECTION_LABEL = '侧边栏配色'
 /* ③ 当前对话标题标红：钩子是官方自己在当前对话行上输出的 aria-selected="true"。
    标题恒为行的第 2 个子 span（class 是构建哈希，不可依赖），只染文字，
    时间/状态点/操作按钮保持原样。 */
-:root{--ws-current-title:#D92B2B;--ws-palette-mask:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCcgZmlsbD0nbm9uZScgc3Ryb2tlPScjMDAwJyBzdHJva2Utd2lkdGg9JzEuOScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJyBzdHJva2UtbGluZWpvaW49J3JvdW5kJz48cGF0aCBkPSdNMTIgMy41YTguNSA4LjUgMCAxIDAgMCAxN2MxLjMgMCAyLS45IDItMS45IDAtMS0uOC0xLjUtLjgtMi40IDAtLjkuNy0xLjUgMS43LTEuNWgxLjhhNC4zIDQuMyAwIDAgMCA0LjMtNC4zYzAtMy45LTMuOS02LjktOS02Ljl6Jy8+PGNpcmNsZSBjeD0nNy42JyBjeT0nMTEuNCcgcj0nMS4wNScgZmlsbD0nIzAwMCcvPjxjaXJjbGUgY3g9JzkuNycgY3k9JzcuNCcgcj0nMS4wNScgZmlsbD0nIzAwMCcvPjxjaXJjbGUgY3g9JzE0LjEnIGN5PSc2LjknIHI9JzEuMDUnIGZpbGw9JyMwMDAnLz48Y2lyY2xlIGN4PScxNy4yJyBjeT0nOS42JyByPScxLjA1JyBmaWxsPScjMDAwJy8+PC9zdmc+");}
+:root{--ws-current-title:#D92B2B;}
 body[data-ds-dark-theme]{--ws-current-title:#FF6B6B;}
 [data-row-key^="session:"][aria-selected="true"] > span:nth-child(2){color:var(--ws-current-title);}
 
@@ -460,17 +460,6 @@ body[data-ds-dark-theme]{--ws-current-title:#FF6B6B;}
   color:var(--ws-accent,var(--ws-color));
 }
 [data-ws-color-btn]:focus-visible{outline:2px solid var(--ws-current-title);outline-offset:1px;}
-
-/* ⑤ 官方设置页的导航栏：对未知分区会回退成齿轮图标；这里用同款颜料板线稿
-   做 mask 把它换掉（只改视觉，不动 React 树里的节点）。 */
-[data-ws-nav-palette] > svg{display:none;}
-[data-ws-nav-palette]::before{
-  content:'';flex:none;width:16px;height:16px;
-  background-color:currentColor;
-  -webkit-mask:var(--ws-palette-mask) center/16px 16px no-repeat;
-  mask:var(--ws-palette-mask) center/16px 16px no-repeat;
-  opacity:.85;
-}
 
 /* ⑥ 置顶图钉图标：官方固定用 --dsw-alias-label-caption 上色，这里允许设置页覆盖。
    --ws-pin-color 只在用户设置过颜色时才生成；未设置时回落到官方原色。
@@ -579,13 +568,16 @@ body[data-ds-dark-theme]{--ws-current-title:#FF6B6B;}
   opacity: 0;
   margin: 0;
 }
+/* 颜色与官方 Switch（ui-primitives/Switch.module.css）逐项对齐：
+   关 = border-l3 轨道 + switch-thumb 圆钮；开 = brand-primary 轨道 +
+   label-primary-foreground 圆钮（暗色主题下即浅色轨道 + 近黑圆钮）。 */
 .ws-toggle-track {
   position: relative;
   width: 34px;
   height: 20px;
   flex: none;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 15%, transparent);
+  background: var(--dsw-alias-border-l3);
   transition: background 0.18s var(--ds-ease-in-out);
 }
 .ws-toggle-thumb {
@@ -597,12 +589,15 @@ body[data-ds-dark-theme]{--ws-current-title:#FF6B6B;}
   border-radius: 50%;
   background: var(--dsw-alias-switch-thumb, #fff);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
-  transition: transform 0.18s var(--ds-ease-in-out);
+  transition:
+    transform 0.18s var(--ds-ease-in-out),
+    background 0.18s var(--ds-ease-in-out);
 }
 .ws-toggle input:checked + .ws-toggle-track {
   background: var(--dsw-alias-brand-primary);
 }
 .ws-toggle input:checked + .ws-toggle-track .ws-toggle-thumb {
+  background: var(--dsw-alias-label-primary-foreground, #0f1115);
   transform: translateX(14px);
 }
 .ws-toggle input:focus-visible + .ws-toggle-track {
@@ -1632,8 +1627,6 @@ body[data-ds-dark-theme] .ws-seg-thumb {
           }
           tagged.clear()
           for (const el of now) tagged.add(el)
-          // 设置页可能在任何时刻打开/重渲染，顺手把导航图标补成颜料板。
-          patchSettingsNav()
         })
       }
 
@@ -1644,9 +1637,6 @@ body[data-ds-dark-theme] .ws-seg-thumb {
       /** 清掉所有打过的标签与取色按钮（停用/卸载时恢复原生）。 */
       function clearTags() {
         for (const el of document.querySelectorAll('[data-ws-color-host]')) el.remove()
-        for (const el of document.querySelectorAll('[data-ws-nav-palette]')) {
-          el.removeAttribute('data-ws-nav-palette')
-        }
         for (const el of tagged) {
           for (const attr of ['data-ws-row', 'data-ws-section', 'data-ws-depth']) {
             if (el.hasAttribute(attr)) el.removeAttribute(attr)
@@ -1719,16 +1709,59 @@ body[data-ds-dark-theme] .ws-seg-thumb {
         set('--ws-weight', resolved ? resolved.weight : '')
       }
 
+      /** 颜料板线稿的几何数据：侧栏取色按钮（DOM）与设置页导航图标（React）共用。 */
+      const PALETTE_PATH_D =
+        'M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.9 2-1.9 0-1-.8-1.5-.8-2.4 0-.9.7-1.5 1.7-1.5h1.8a4.3 4.3 0 0 0 4.3-4.3c0-3.9-3.9-6.9-9-6.9z'
+      const PALETTE_DOTS = [
+        [7.6, 11.4],
+        [9.7, 7.4],
+        [14.1, 6.9],
+        [17.2, 9.6],
+      ]
+
       /** 颜料板线稿图标（中性色，不吃 --ws-color）。 */
       const PALETTE_ICON_SVG =
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" ' +
         'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-        '<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.9 2-1.9 0-1-.8-1.5-.8-2.4 0-.9.7-1.5 1.7-1.5h1.8a4.3 4.3 0 0 0 4.3-4.3c0-3.9-3.9-6.9-9-6.9z"/>' +
-        '<circle cx="7.6" cy="11.4" r="1.05" fill="currentColor" stroke="none"/>' +
-        '<circle cx="9.7" cy="7.4" r="1.05" fill="currentColor" stroke="none"/>' +
-        '<circle cx="14.1" cy="6.9" r="1.05" fill="currentColor" stroke="none"/>' +
-        '<circle cx="17.2" cy="9.6" r="1.05" fill="currentColor" stroke="none"/>' +
+        '<path d="' + PALETTE_PATH_D + '"/>' +
+        PALETTE_DOTS.map(
+          ([cx, cy]) =>
+            '<circle cx="' + cx + '" cy="' + cy + '" r="1.05" fill="currentColor" stroke="none"/>',
+        ).join('') +
         '</svg>'
+
+      /**
+       * 设置页导航图标（官方 settings.section.icon 槽）：与侧栏取色按钮同款颜料板。
+       * 槽只传 size / active，按钮、标签和图标容器都由官方外壳负责。
+       */
+      function SettingsNavIcon(props) {
+        const size = (props && props.size) || 16
+        return React.createElement(
+          'svg',
+          {
+            viewBox: '0 0 24 24',
+            width: size,
+            height: size,
+            fill: 'none',
+            stroke: 'currentColor',
+            strokeWidth: 1.7,
+            strokeLinecap: 'round',
+            strokeLinejoin: 'round',
+            'aria-hidden': 'true',
+          },
+          React.createElement('path', { d: PALETTE_PATH_D }),
+          PALETTE_DOTS.map(([cx, cy]) =>
+            React.createElement('circle', {
+              key: 'dot-' + cx + '-' + cy,
+              cx,
+              cy,
+              r: 1.05,
+              fill: 'currentColor',
+              stroke: 'none',
+            }),
+          ),
+        )
+      }
 
       /** 给工作区行末尾补一个颜料板图标（悬浮才显示；同一行只加一次）。 */
       function ensureColorButton(row, id) {
@@ -1760,18 +1793,6 @@ body[data-ds-dark-theme] .ws-seg-thumb {
         const actions = row.querySelector(':scope > [class*="rowActions"]')
         if (actions) row.insertBefore(host, actions)
         else row.appendChild(host)
-      }
-
-      /** 设置页导航里的分区标题（与 settings.section 注册的 label 保持一致）。 */
-      function patchSettingsNav() {
-        const labels = document.querySelectorAll('span[class*="navLabel"]')
-        for (const label of labels) {
-          if (!label.textContent || label.textContent.trim() !== SECTION_LABEL) continue
-          const btn = label.closest('button')
-          if (!btn || btn.getAttribute('data-ws-nav-palette') === '1') continue
-          // 官方对未知分区回退齿轮图标；打标记后由 CSS mask 换成颜料板。
-          btn.setAttribute('data-ws-nav-palette', '1')
-        }
       }
 
       /* ---- 预设色板浮层（原生 DOM，独立于 React 树） ---- */
@@ -2042,6 +2063,19 @@ body[data-ds-dark-theme] .ws-seg-thumb {
               label: SECTION_LABEL,
             },
             Section,
+          ),
+        )
+        // 导航图标：官方对没有专属图标的分区回退设置齿轮；这里用同 id 注册
+        // 颜料板图标顶掉它（官方 settings.section.icon 槽，占位大小由外壳决定）。
+        ctx.slots.inject('settings.section.icon', () =>
+          ctx.slots.register(
+            {
+              name: 'settings.section.icon',
+              id: SECTION_ID,
+              order: 32,
+              label: SECTION_LABEL,
+            },
+            SettingsNavIcon,
           ),
         )
       } catch (e) {
