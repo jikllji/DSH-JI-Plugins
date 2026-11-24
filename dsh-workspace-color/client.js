@@ -440,15 +440,17 @@ const SECTION_LABEL = '侧边栏配色'
 body[data-ds-dark-theme]{--ws-current-title:#FF6B6B;}
 [data-row-key^="session:"][aria-selected="true"] > span:nth-child(2){color:var(--ws-current-title);}
 
-/* ④ 取色入口：只在鼠标悬浮工作区行时出现，位置在行尾「⋯」左侧；
-   隐藏时 display:none 不占宽度（和官方动作按钮同一套显隐节奏）。
+/* ④ 取色入口：鼠标悬浮工作区行时出现，或键盘导航时行获得焦点出现；
+   位置在行尾「⋯」左侧，隐藏时 display:none 不占宽度（和官方动作按钮同一套显隐节奏）。
+   焦点分支必须前置 html[data-input-modality='keyboard']：DSH 给带右键菜单的行
+   注入了 tabIndex=0，鼠标点一下文件夹焦点就留在行上，裸 :focus-within 会让图标常驻。
    图标是中性颜料板，颜色由浮层里的圆点/取色器决定。 */
 [data-ws-color-host]{
   display:none;align-items:center;flex:none;
   margin-inline:2px;
 }
 [data-ws-row]:hover > [data-ws-color-host],
-[data-ws-row]:focus-within > [data-ws-color-host]{display:inline-flex;}
+html[data-input-modality='keyboard'] [data-ws-row]:focus-within > [data-ws-color-host]{display:inline-flex;}
 [data-ws-color-btn]{
   display:inline-flex;align-items:center;justify-content:center;
   width:20px;height:20px;padding:0;border:0;border-radius:6px;
